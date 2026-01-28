@@ -561,6 +561,9 @@ class SentenceReadingAgent:
 
         Args:
             text: THe text to be tokenized.
+
+        References:
+            - Tokenization in NLP: https://www.datacamp.com/blog/what-is-tokenization
         """
         text = text.strip()
         if text.endswith(".") or text.endswith("?"):
