@@ -28,8 +28,13 @@ KNOWN_NAMES = {
 nlp = spacy.load("en_core_web_sm")
 
 
-def preprocess_word_list(word_lst: str = "mostcommon.txt"):
-    """Preprocess the wordlist and return the attributes of the words."""
+def preprocess_word_list(word_lst: str = "mostcommon.txt") -> dict:
+    """Preprocess the wordlist and return the attributes of the words in a dictionary.
+
+    Args:
+        word_lst: The file containing the common words default "mostcommon.txt"
+    """
+
     common = Path(word_lst)
     if not common.exists():
         raise FileNotFoundError("mostcommong.txt does not exist.")
@@ -53,8 +58,8 @@ def preprocess_word_list(word_lst: str = "mostcommon.txt"):
                 "pos": token.pos_,  # POS (Part of Speech): tells you if a word is a NOUN, VERB, ADJ, etc.
                 "lemma": token.lemma_,  # Lemma: base form of the word ("brought" → "bring")
             }
-    print(word_info)
+    return word_info
 
 
 if __name__ == "__main__":
-    preprocess_word_list()
+    print(preprocess_word_list())
