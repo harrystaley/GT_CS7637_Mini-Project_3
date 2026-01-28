@@ -1,10 +1,13 @@
+import re
+
+
 class SentenceReadingAgent:
     """The main class for the sentence reading agent that handles reading sentences to solve this project."""
 
     def __init__(self):
         # POS (Part of Speech): tells you if a word is a NOUN, VERB, ADJ, etc.
         # Lemma: base form of the word ("brought" → "bring")
-        self.word_data = {
+        self.WORD_DATA = {
             "Serena": {"pos": "PROPN", "lemma": "serena"},
             "Andrew": {"pos": "PROPN", "lemma": "andrew"},
             "Bobbie": {"pos": "PROPN", "lemma": "bobbie"},
@@ -533,7 +536,7 @@ class SentenceReadingAgent:
             "adult": {"pos": "NOUN", "lemma": "adult"},
             "adults": {"pos": "NOUN", "lemma": "adult"},
         }
-        self.names = {
+        self.NAMES = {
             "ada",
             "andrew",
             "bobbie",
@@ -556,8 +559,38 @@ class SentenceReadingAgent:
             "yeeling",
         }
 
-    def solve(self, sentence: str, question: str):
+    def tokenize(self, text: str) -> list[tuple[str, str]]:
+        """Split text into tokens, handling punctuation and times."""
+        # Remove ending punctuation (. or ?)
+        text = text.strip()
+        if text.endswith(".") or text.endswith("?"):
+            text = text[:-1]
+
+        # Split on whitespace
+        tokens = text.split()
+
+        # Clean each token (but preserve apostrophes and time colons)
+        result = []
+        for token in tokens:
+            # Check if it's a time (e.g., 8:00AM, 12:34PM)
+            if re.match(r"\d{1,2}:\d{2}(AM|PM)?", token, re.IGNORECASE):
+                result.append(("TIME", token))
+            # Check if it's a name
+            elif token.lower() in self.NAMES or token[0].isupper():
+                result.append(("NAME", token))
+            # Check if it's a known word
+            elif token.lower() in self.WORD_DATA:
+                pos = self.WORD_DATA[token.lower()]["pos"]
+                result.append((pos, token))
+            else:
+                result.append(("UNKNOWN", token))
+
+        return result
+
+    def solve(self, sentence: str, question: str) -> str:
         """Solve the problem for the given set."""
+        answer = ""
+
         """
           You can use a library like spacy (https://spacy.io/usage/linguistic-features) to preprocess the
             mostcommon.txt file. There are others that could be used but you must use them in preprocessing only.
@@ -578,4 +611,4 @@ class SentenceReadingAgent:
         # Add your code here! Your solve method should receive
         # two strings as input: sentence and question. It should
         # return a string representing the answer to the question.
-        pass
+        return answer
