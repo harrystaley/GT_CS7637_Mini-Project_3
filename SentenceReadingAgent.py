@@ -556,6 +556,18 @@ class SentenceReadingAgent:
             "yeeling",
         }
 
+    def tokenize(self, text: str) -> list:
+        """Tokenize the sentence returning a list of the tokens.
+
+        Args:
+            text: THe text to be tokenized.
+        """
+        text = text.strip()
+        if text.endswith(".") or text.endswith("?"):
+            text = text[:-1]
+        tokens = text.split()
+        return tokens
+
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
         Args:
