@@ -13,7 +13,7 @@ select = ["E", "F", "I", "B", "C4", "UP", "N", "PTH", "S"]
 ignore = ["E501"] # Ignore line-length check if using formatter
 
 [lint.isort]
-known-first-party = ["src"] # Update with your package name
+known-first-party = ["."] # Update with your package name
 
 [lint.pydocstyle]
 convention = "google" # Use numpy or google for docstrings
