@@ -1,13 +1,10 @@
-import re
-
-
 class SentenceReadingAgent:
     """The main class for the sentence reading agent that handles reading sentences to solve this project."""
 
     def __init__(self):
         # POS (Part of Speech): tells you if a word is a NOUN, VERB, ADJ, etc.
         # Lemma: base form of the word ("brought" → "bring")
-        self.WORD_DATA = {
+        self.word_data = {
             "Serena": {"pos": "PROPN", "lemma": "serena"},
             "Andrew": {"pos": "PROPN", "lemma": "andrew"},
             "Bobbie": {"pos": "PROPN", "lemma": "bobbie"},
@@ -536,7 +533,7 @@ class SentenceReadingAgent:
             "adult": {"pos": "NOUN", "lemma": "adult"},
             "adults": {"pos": "NOUN", "lemma": "adult"},
         }
-        self.NAMES = {
+        self.names = {
             "ada",
             "andrew",
             "bobbie",
@@ -559,56 +556,31 @@ class SentenceReadingAgent:
             "yeeling",
         }
 
-    def tokenize(self, text: str) -> list[tuple[str, str]]:
-        """Split text into tokens, handling punctuation and times."""
-        # Remove ending punctuation (. or ?)
-        text = text.strip()
-        if text.endswith(".") or text.endswith("?"):
-            text = text[:-1]
-
-        # Split on whitespace
-        tokens = text.split()
-
-        # Clean each token (but preserve apostrophes and time colons)
-        result = []
-        for token in tokens:
-            # Check if it's a time (e.g., 8:00AM, 12:34PM)
-            if re.match(r"\d{1,2}:\d{2}(AM|PM)?", token, re.IGNORECASE):
-                result.append(("TIME", token))
-            # Check if it's a name
-            elif token.lower() in self.NAMES or token[0].isupper():
-                result.append(("NAME", token))
-            # Check if it's a known word
-            elif token.lower() in self.WORD_DATA:
-                pos = self.WORD_DATA[token.lower()]["pos"]
-                result.append((pos, token))
-            else:
-                result.append(("UNKNOWN", token))
-
-        return result
-
     def solve(self, sentence: str, question: str) -> str:
-        """Solve the problem for the given set."""
-        answer = ""
-
+        """Answer the question based on the given sentence.
+        Args:
+            sentence: The sentence used to answer the question.
+            question: The question that pplies to the sentence.
         """
-          You can use a library like spacy (https://spacy.io/usage/linguistic-features) to preprocess the
-            mostcommon.txt file. There are others that could be used but you must use them in preprocessing only.
-            You CANNOT import the library into Gradescope.
-          
-          You must include whatever preprocessing you've done into your SentenceReadingAgent.py.
-          
-          DO NOT use another file .txt or .csv. Hard code your DICTS | LISTS into this .py file
-          
-          While the supplied mostcommon.txt contains most of the common words you will need
-            you can (and SHOULD) expand the file as you find cases that the agent has problems
-            processing. 
-            
-          Also not all words will be processed using the correct lexing for every possible problem the 
-            agent might encounter and you are ENCOURAGED to expand these in your agents knowledge representation.
+        ans = ""
+        """
+        You can use a library like spacy (https://spacy.io/usage/linguistic-features) to preprocess the
+          mostcommon.txt file. There are others that could be used but you must use them in preprocessing only.
+          You CANNOT import the library into Gradescope.
+
+        You must include whatever preprocessing you've done into your SentenceReadingAgent.py.
+
+        DO NOT use another file .txt or .csv. Hard code your DICTS | LISTS into this .py file
+
+        While the supplied mostcommon.txt contains most of the common words you will need
+          you can (and SHOULD) expand the file as you find cases that the agent has problems
+          processing.
+
+        Also not all words will be processed using the correct lexing for every possible problem the
+          agent might encounter and you are ENCOURAGED to expand these in your agents knowledge representation.
         """
 
         # Add your code here! Your solve method should receive
         # two strings as input: sentence and question. It should
         # return a string representing the answer to the question.
-        return answer
+        return ans
