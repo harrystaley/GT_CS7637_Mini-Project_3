@@ -675,6 +675,55 @@ class SentenceReadingAgent:
             "modifiers": {},  # Adjective-noun links
             "distances": [],  # Measure phrases
         }
+        verb_idx = None
+        for i, (word, pos) in enumerate(tagged_tokens):
+            if pos == "VERB":
+                verb_idx = i
+                frame["action"] = word
+                break
+
+        if verb_idx is None:
+            return frame
+
+        # Before verb → agents
+        for word, pos in tagged_tokens[:verb_idx]:
+            if pos in ["PROPN", "NOUN"]:
+                frame["agents"].append(word)
+
+        # After verb → other roles based on prepositions
+        current_prep = None
+        current_adj = None
+
+        for word, pos in tagged_tokens[verb_idx + 1 :]:
+            if pos == "ADP":
+                current_prep = word.lower()
+            elif pos == "ADJ":
+                current_adj = word
+            elif pos == "DET":
+                continue
+            elif pos in ["NOUN", "PROPN"]:
+                # Assign role based on preposition
+                if current_prep is None:
+                    frame["objects"].append(word)
+                elif current_prep == "to":
+                    if pos == "PROPN":
+                        frame["recipients"].append(word)
+                    else:
+                        frame["locations"].append(word)
+                elif current_prep in ["at", "in", "on", "from"]:
+                    frame["locations"].append(word)
+                elif current_prep == "with":
+                    if pos == "PROPN":
+                        frame["companions"].append(word)
+                    else:
+                        frame["instruments"].append(word)
+
+                # Track adjective modifiers
+                if current_adj:
+                    frame["modifiers"][word] = current_adj
+                    current_adj = None
+
+                current_prep = None
 
         return frame
 
