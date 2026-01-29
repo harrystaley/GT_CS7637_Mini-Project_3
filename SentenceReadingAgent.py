@@ -1,10 +1,13 @@
+import re
+
+
 class SentenceReadingAgent:
     """The main class for the sentence reading agent that handles reading sentences to solve this project."""
 
     def __init__(self):
         # POS (Part of Speech): tells you if a word is a NOUN, VERB, ADJ, etc.
         # Lemma: base form of the word ("brought" → "bring")
-        self.word_data = {
+        self.WORD_DATA = {
             "Serena": {"pos": "PROPN", "lemma": "serena"},
             "Andrew": {"pos": "PROPN", "lemma": "andrew"},
             "Bobbie": {"pos": "PROPN", "lemma": "bobbie"},
@@ -533,7 +536,7 @@ class SentenceReadingAgent:
             "adult": {"pos": "NOUN", "lemma": "adult"},
             "adults": {"pos": "NOUN", "lemma": "adult"},
         }
-        self.names = {
+        self.NAMES = {
             "ada",
             "andrew",
             "bobbie",
@@ -570,6 +573,40 @@ class SentenceReadingAgent:
             text = text[:-1]
         tokens = text.split()
         return tokens
+
+    def get_pos(self, word: str) -> str:
+        """Get part-of-speech tag for a word.
+        Args:
+            word: The given word that needs to be tagged.
+
+        References:
+            - Part of Speech Tagging:
+                https://campus.datacamp.com/courses/feature-engineering-for-nlp-in-python/text-preprocessing-pos-tagging-and-ner?ex=8
+            - Penn Treebank POS Tags:
+                https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+        """
+        word_lower = word.lower()
+
+        # Check for names (proper nouns)
+        if word_lower in self.NAMES:
+            return "PROPN"
+
+        # Check for times
+        if re.match(r"\d{1,2}:\d{2}(AM|PM)?", word, re.IGNORECASE):
+            return "TIME"
+
+        # Lookup in preprocessed dictionary
+        if word_lower in self.WORD_DATA:
+            return self.WORD_DATA[word_lower]["pos"]
+
+        return "UNKNOWN"
+
+    def tag_sentence(self, tokens: list[str]) -> list[tuple[str, str]]:
+        """Tag all tokens with POS and return the list of tuples.
+        Args:
+            tokens: The list of words that make up the sentence.
+        """
+        return [(token, self.get_pos(token)) for token in tokens]
 
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
