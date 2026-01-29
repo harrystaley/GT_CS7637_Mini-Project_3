@@ -641,15 +641,18 @@ class SentenceReadingAgent:
 
         return "UNKNOWN"
 
-    def tag_sentence(self, tokens: list[str]) -> list[tuple[str, str]]:
+    def tag_tokens(self, tokens: list[str]) -> list[tuple[str, str]]:
         """Tag all tokens with POS and return the list of tuples.
         Args:
             tokens: The list of words that make up the sentence.
         """
         return [(token, self.get_pos(token)) for token in tokens]
 
-    def create_frame(self) -> dict:
-        """Create an empty semantic frame.
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+        """Extract a sentence frame from tagged tokens.
+
+        Args:
+            tagged_tokens: The list of tuples containing tokens and their part of speach (POS) tags.
 
         References:
             - Frame extraction
@@ -660,7 +663,7 @@ class SentenceReadingAgent:
             - Semantic Roles in NLP
                 https://www.geeksforgeeks.org/nlp/semantic-roles-in-nlp/
         """
-        return {
+        frame = {
             "agents": [],  # Fillmore's AGENT case
             "action": None,  # The predicate/verb
             "objects": [],  # PATIENT/THEME case
@@ -672,6 +675,8 @@ class SentenceReadingAgent:
             "modifiers": {},  # Adjective-noun links
             "distances": [],  # Measure phrases
         }
+
+        return frame
 
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
