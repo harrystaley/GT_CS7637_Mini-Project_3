@@ -626,16 +626,16 @@ class SentenceReadingAgent:
                 https://web.stanford.edu/~jurafsky/slp3/17.pdf
         """
         word_lower = word.lower()
-
-        # Check for names (proper nouns)
-        if word_lower in self.NAMES:
+        if (
+            word_lower in self.NAMES
+            or word_lower in self.WORD_DATA
+            and self.WORD_DATA[word_lower]["pos"] == "PROPN"
+        ):
             return "PROPN"
 
-        # Check for times
         if self.TIME_PATTERN.match(word):
             return "TIME"
 
-        # Lookup in preprocessed dictionary
         if word_lower in self.WORD_DATA:
             return self.WORD_DATA[word_lower]["pos"]
 
