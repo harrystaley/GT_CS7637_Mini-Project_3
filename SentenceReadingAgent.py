@@ -1,8 +1,44 @@
+"""
+A semantic frame-based question answering agent that extracts thematic roles
+from sentences and answers WH-questions by querying the appropriate frame slots.
+
+References:
+
+    Jurafsky, D., & Martin, J. H. (2009). Speech and Language Processing (2nd ed.).
+    Pearson Prentice Hall.
+
+    Key chapters:
+    - Ch. 3: Words and Transducers, pp. 57-90 (tokenization)
+    - Ch. 5: Part-of-Speech Tagging, pp. 123-164
+    - Ch. 19: Lexical Semantics, pp. 617-656 (thematic roles)
+    - Ch. 20: Computational Lexical Semantics, pp. 657-700 (semantic role labeling)
+    - Ch. 23: Question Answering and Summarization, pp. 767-812 (answer type detection)
+
+    Jurafsky, D., & Martin, J. H. (2026). Speech and Language Processing (3rd ed.).
+    Online manuscript. https://web.stanford.edu/~jurafsky/slp3/
+
+    Key chapters:
+    - Ch. 2: Words and Tokens
+      https://web.stanford.edu/~jurafsky/slp3/2.pdf
+    - Ch. 17: Sequence Labeling for POS and Named Entities
+      https://web.stanford.edu/~jurafsky/slp3/17.pdf
+    - Ch. 21: Semantic Role Labeling and Argument Structure
+      https://web.stanford.edu/~jurafsky/slp3/21.pdf
+"""
+
 import re
 
 
 class SentenceReadingAgent:
-    """The main class for the sentence reading agent that handles reading sentences to solve this project."""
+    """An agent that reads sentences and answers questions.
+
+    Semantic role labeling pipeline:
+    1. Tokenization - Jurafsky & Martin (2009), Ch. 3; (2026), Ch. 2
+    2. POS tagging - Jurafsky & Martin (2009), Ch. 5; (2026), Ch. 17
+    3. Frame extraction - Jurafsky & Martin (2009), Ch. 19-20; (2026), Ch. 21
+    4. Question classification - Jurafsky & Martin (2009), Ch. 23
+    5. Frame querying - Jurafsky & Martin (2009), Ch. 23
+    """
 
     def __init__(self):
         # POS (Part of Speech): tells you if a word is a NOUN, VERB, ADJ, etc.
@@ -558,19 +594,21 @@ class SentenceReadingAgent:
             "yan",
             "yeeling",
         }
+        self.TIME_PATTERN = re.compile(r"\d{1,2}:\d{2}(AM|PM)?", re.IGNORECASE)
 
     def tokenize(self, text: str) -> list:
         """Tokenize the sentence returning a list of the tokens.
 
         Args:
-            text: THe text to be tokenized.
+            text: The text to be tokenized.
 
         References:
-            - Tokenization in NLP: https://www.datacamp.com/blog/what-is-tokenization
+            - Ch.2 Words and Tokens:
+                https://web.stanford.edu/~jurafsky/slp3/2.pdf
+            - Tokenization in NLP:
+                https://www.datacamp.com/blog/what-is-tokenization
         """
-        text = text.strip()
-        if text.endswith(".") or text.endswith("?"):
-            text = text[:-1]
+        text = text.rstrip(".?!")
         tokens = text.split()
         return tokens
 
@@ -584,6 +622,8 @@ class SentenceReadingAgent:
                 https://campus.datacamp.com/courses/feature-engineering-for-nlp-in-python/text-preprocessing-pos-tagging-and-ner?ex=8
             - Penn Treebank POS Tags:
                 https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+            - Ch.17 Sequence Labeling for POS and Named Entities:
+                https://web.stanford.edu/~jurafsky/slp3/17.pdf
         """
         word_lower = word.lower()
 
@@ -592,7 +632,7 @@ class SentenceReadingAgent:
             return "PROPN"
 
         # Check for times
-        if re.match(r"\d{1,2}:\d{2}(AM|PM)?", word, re.IGNORECASE):
+        if self.TIME_PATTERN.match(word):
             return "TIME"
 
         # Lookup in preprocessed dictionary
@@ -607,6 +647,31 @@ class SentenceReadingAgent:
             tokens: The list of words that make up the sentence.
         """
         return [(token, self.get_pos(token)) for token in tokens]
+
+    def create_frame(self) -> dict:
+        """Create an empty semantic frame.
+
+        References:
+            - Frame extraction
+                - Ch.20 Computational Lexical Semantics (Jurafsky & Martin, 2009)
+                - Ch.21 Semantic Role Labeling and Argument Structure (Jurafsky & Martin, 2026)
+            - Semantic roles
+                - Ch.19 Lexical Semantics (Jurafsky & Martin, 2009)
+            - Semantic Roles in NLP
+                https://www.geeksforgeeks.org/nlp/semantic-roles-in-nlp/
+        """
+        return {
+            "agents": [],  # Fillmore's AGENT case
+            "action": None,  # The predicate/verb
+            "objects": [],  # PATIENT/THEME case
+            "recipients": [],  # RECIPIENT/GOAL case
+            "locations": [],  # LOCATION case
+            "times": [],  # TEMPORAL adjunct
+            "instruments": [],  # INSTRUMENT case
+            "companions": [],  # COMITATIVE case
+            "modifiers": {},  # Adjective-noun links
+            "distances": [],  # Measure phrases
+        }
 
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
