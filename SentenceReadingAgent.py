@@ -648,7 +648,9 @@ class SentenceReadingAgent:
         """
         return [(token, self.get_pos(token)) for token in tokens]
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -701,6 +703,8 @@ class SentenceReadingAgent:
                 current_adj = word
             elif pos == "DET":
                 continue
+            elif pos == "TIME":
+                frame["times"].append(word)
             elif pos in ["NOUN", "PROPN"]:
                 # Assign role based on preposition
                 if current_prep is None:
