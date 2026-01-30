@@ -648,9 +648,7 @@ class SentenceReadingAgent:
         """
         return [(token, self.get_pos(token)) for token in tokens]
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -731,6 +729,44 @@ class SentenceReadingAgent:
 
         return frame
 
+    def classify_question(self, question: str) -> str:
+        """Classify the type of question.
+
+        Args:
+            question: The given question to classify.
+
+        References:
+            - Question classification and answer type taxonomy
+                - Ch.23 Question Answering (Jurafsky & Martin, 2009)
+            - Answering Questions from text
+                https://campus.datacamp.com/courses/natural-language-processing-nlp-in-python/token-classification-and-text-generation?ex=5
+        """
+        qst = question.lower()
+
+        # Answer the 5 W's (who, what, when, how, and why) of a sentence
+        if qst.startswith("who"):
+            if "to" in qst or "receive" in qst:
+                return "WHO_RECIPIENT"
+            return "WHO_AGENT"
+        elif qst.startswith("what"):
+            if "color" in qst:
+                return "WHAT_COLOR"
+            return "WHAT_OBJECT"
+        elif qst.startswith("where"):
+            return "WHERE"
+        elif qst.startswith("when"):
+            return "WHEN"
+        elif qst.startswith("how"):
+            return "HOW"
+        elif qst.startswith("why"):
+            return "WHY"
+        elif "with what" in qst:
+            return "WITH_WHAT"
+        elif "with whom" in qst:
+            return "WITH_WHOM"
+
+        return "UNKNOWN"
+
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
         Args:
@@ -738,24 +774,22 @@ class SentenceReadingAgent:
             question: The question that pplies to the sentence.
         """
         ans = ""
-        """
-        You can use a library like spacy (https://spacy.io/usage/linguistic-features) to preprocess the
-          mostcommon.txt file. There are others that could be used but you must use them in preprocessing only.
-          You CANNOT import the library into Gradescope.
+        tokens = self.tokenize(sentence)
+        tagged_tokens = self.tag_tokens(tokens)
+        frame = self.get_frame_from_tagged_tokens(tagged_tokens)
+        q_type = self.classify_question(question)
 
-        You must include whatever preprocessing you've done into your SentenceReadingAgent.py.
+        if q_type == "WHO_AGENT":
+            if frame["agents"]:
+                ans = frame["agents"][0]
+        elif q_type == "WHAT_OBJECT":
+            if frame["objects"]:
+                ans = frame["objects"][0]
+        elif q_type == "WHERE":
+            if frame["locations"]:
+                ans = frame["locations"][0]
+        elif q_type == "WHEN":
+            if frame["times"]:
+                ans = frame["times"][0]
 
-        DO NOT use another file .txt or .csv. Hard code your DICTS | LISTS into this .py file
-
-        While the supplied mostcommon.txt contains most of the common words you will need
-          you can (and SHOULD) expand the file as you find cases that the agent has problems
-          processing.
-
-        Also not all words will be processed using the correct lexing for every possible problem the
-          agent might encounter and you are ENCOURAGED to expand these in your agents knowledge representation.
-        """
-
-        # Add your code here! Your solve method should receive
-        # two strings as input: sentence and question. It should
-        # return a string representing the answer to the question.
         return ans
