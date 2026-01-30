@@ -888,8 +888,12 @@ class SentenceReadingAgent:
         q_type_parts = q_type.split("_")
 
         if q_type_parts[0] == "WHO":
+            if len(q_type_parts) > 1 and q_type_parts[1] == "RECIPIENT":
+                if frame["recipients"]:
+                    return frame["recipients"][0]
+            # Fall back to AGENT
             if frame["agents"]:
-                ans = frame["agents"][0]
+                return frame["agents"][0]
         elif q_type_parts[0] == "WHAT":
             if q_type_parts[1] == "OBJECT":
                 if frame["objects"]:
@@ -910,8 +914,10 @@ class SentenceReadingAgent:
                 if frame["distances"]:
                     ans = frame["distances"][0]
             elif q_type_parts[1] == "LONG":
-                if frame["modifiers"]:
-                    ans = frame["modifiers"][0]
+                q_tokens = self.tokenize(question)
+                for token in q_tokens:
+                    if token in frame["modifiers"]:
+                        return frame["modifiers"][token]
             elif q_type_parts[1] == "QUANTITY":
                 if frame["quantities"]:
                     ans = frame["quantities"][0]
