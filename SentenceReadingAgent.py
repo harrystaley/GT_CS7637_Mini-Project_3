@@ -184,7 +184,7 @@ class SentenceReadingAgent:
             "year": {"pos": "NOUN", "lemma": "year"},
             "came": {"pos": "VERB", "lemma": "come"},
             "show": {"pos": "VERB", "lemma": "show"},
-            "every": {"pos": "PRON", "lemma": "every"},
+            "every": {"pos": "DET", "lemma": "every"},
             "good": {"pos": "ADJ", "lemma": "good"},
             "me": {"pos": "PRON", "lemma": "I"},
             "give": {"pos": "VERB", "lemma": "give"},
@@ -480,7 +480,7 @@ class SentenceReadingAgent:
             "cry": {"pos": "VERB", "lemma": "cry"},
             "dark": {"pos": "ADJ", "lemma": "dark"},
             "machine": {"pos": "NOUN", "lemma": "machine"},
-            "note": {"pos": "VERB", "lemma": "note"},
+            "note": {"pos": "NOUN", "lemma": "note"},
             "wait": {"pos": "VERB", "lemma": "wait"},
             "plan": {"pos": "NOUN", "lemma": "plan"},
             "figure": {"pos": "NOUN", "lemma": "figure"},
@@ -612,10 +612,12 @@ class SentenceReadingAgent:
         tokens = text.split()
         return tokens
 
-    def get_pos(self, word: str) -> str:
+    def get_pos(self, word: str, prev_word: str = None) -> str:
         """Get part-of-speech tag for a word.
+
         Args:
             word: The given word that needs to be tagged.
+            prev_word: The previous word in the sentence, used to determine.
 
         References:
             - Part of Speech Tagging:
@@ -626,29 +628,56 @@ class SentenceReadingAgent:
                 https://web.stanford.edu/~jurafsky/slp3/17.pdf
         """
         word_lower = word.lower()
-        if (
-            word_lower in self.NAMES
-            or word_lower in self.WORD_DATA
-            and self.WORD_DATA[word_lower]["pos"] == "PROPN"
-        ):
+        # Check known words first
+        if word_lower in self.NAMES:
             return "PROPN"
-
+        if word_lower in self.WORD_DATA:
+            return self.WORD_DATA[word_lower]["pos"]
         if self.TIME_PATTERN.match(word):
             return "TIME"
 
-        if word_lower in self.WORD_DATA:
-            return self.WORD_DATA[word_lower]["pos"]
+        # Infer from context: article/adjective usually precedes noun
+        if prev_word and prev_word.lower() in {
+            "a",
+            "an",
+            "the",
+            "this",
+            "that",
+            "some",
+        }:
+            return "NOUN"
 
-        return "UNKNOWN"
+        # Infer from morphology (suffix patterns)
+        if word_lower.endswith(("tion", "ness", "ment", "ity", "er", "or")):
+            return "NOUN"
+        if word_lower.endswith(("ly",)):
+            return "ADV"
+        if word_lower.endswith(("ed", "ing")) and len(word_lower) > 4:
+            return "VERB"
+
+        # Capitalized mid-sentence = likely proper noun
+        if word[0].isupper():
+            return "PROPN"
+
+        return "NOUN"  # Default guess: noun (most common for unknowns)
 
     def tag_tokens(self, tokens: list[str]) -> list[tuple[str, str]]:
         """Tag all tokens with POS and return the list of tuples.
         Args:
             tokens: The list of words that make up the sentence.
         """
-        return [(token, self.get_pos(token)) for token in tokens]
+        tagged_tokens = []
+        if len(tokens) > 1:
+            for i, token in enumerate(tokens):
+                prev_token = tokens[i - 1] if i > 0 else None
+                tagged_tokens.append(
+                    (token, self.get_pos(word=token, prev_word=prev_token))
+                )
+        return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -776,7 +805,9 @@ class SentenceReadingAgent:
         ans = ""
         tokens = self.tokenize(sentence)
         tagged_tokens = self.tag_tokens(tokens)
+        print(f"tagged_tokens: {tagged_tokens}")
         frame = self.get_frame_from_tagged_tokens(tagged_tokens)
+        print(f"frame: {frame}")
         q_type = self.classify_question(question)
 
         if q_type == "WHO_AGENT":
