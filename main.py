@@ -4,7 +4,7 @@ from SentenceReadingAgent import SentenceReadingAgent
 
 
 @pytest.fixture()
-def test_agent():
+def agent():
     """The main agent call for testing."""
     return SentenceReadingAgent()
 
@@ -51,5 +51,5 @@ S2 = "David and Lucy walk one mile to go to school every day at 8:00AM when ther
         ),
     ],
 )
-def test_solve(self, test_agent, sentence, question, expected):
-    assert test_agent.solve(sentence, question) == expected
+def test_solve(agent, sentence, question, expected):
+    assert agent.solve(sentence, question) == expected
