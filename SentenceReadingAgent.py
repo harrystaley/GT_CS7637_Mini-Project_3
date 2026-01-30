@@ -594,7 +594,29 @@ class SentenceReadingAgent:
             "yan",
             "yeeling",
         }
+        self.DIST = {"mile", "foot", "feet", "meter", "kilometer", "inch", "yard"}
         self.TIME_PATTERN = re.compile(r"\d{1,2}:\d{2}(AM|PM)?", re.IGNORECASE)
+        self.CLAUSE_MARKERS = {"when", "while", "if", "because", "although", "unless"}
+        self.W_WORDS = {"who", "whom", "what", "where", "when", "why", "how"}
+        self.W_MODIFIERS = {
+            "time": "WHEN",
+            "far": "HOW_FAR",
+            "long": "HOW_LONG",
+            "many": "HOW_QUANTITY",
+            "much": "HOW_QUANTITY",
+            "color": "WHAT_COLOR",
+            "often": "HOW_FREQUENCY",
+        }
+        self.W_MOVEMENT = {"get", "go", "travel", "arrive", "walk", "drive", "come"}
+        self.W_BASE = {
+            "who": "WHO_AGENT",
+            "whom": "WHO_AGENT",
+            "what": "WHAT_OBJECT",
+            "where": "WHERE",
+            "when": "WHEN",
+            "why": "WHY",
+            "how": "HOW",
+        }
 
     def tokenize(self, text: str) -> list:
         """Tokenize the sentence returning a list of the tokens.
@@ -640,6 +662,7 @@ class SentenceReadingAgent:
                     return "PART"
                 else:
                     return "ADP"
+            return "ADP"
 
         if word_lower in self.WORD_DATA:
             return self.WORD_DATA[word_lower]["pos"]
@@ -734,9 +757,16 @@ class SentenceReadingAgent:
         # After verb → other roles based on prepositions
         current_prep = None
         current_adj = None
+        current_num = None
 
         for word, pos in tagged_tokens[verb_idx + 1 :]:
-            if pos == "ADP":
+            # stop if the word is a clause marker.
+            if word.lower() in self.CLAUSE_MARKERS:
+                break
+
+            if pos == "NUM":
+                current_num = word
+            elif pos == "ADP":
                 current_prep = word.lower()
             elif pos == "ADJ":
                 current_adj = word
@@ -745,6 +775,12 @@ class SentenceReadingAgent:
             elif pos == "TIME":
                 frame["times"].append(word)
             elif pos in ["NOUN", "PROPN"]:
+                # Handle measure phrases like "3 feet" or "2 miles"
+                if current_num and word.lower() in self.DIST:
+                    frame["distances"].append(f"{current_num} {word}")
+                    current_num = None
+                    current_prep = None
+                    continue
                 # Assign role based on preposition
                 if current_prep is None:
                     frame["objects"].append(word)
@@ -782,31 +818,54 @@ class SentenceReadingAgent:
             - Answering Questions from text
                 https://campus.datacamp.com/courses/natural-language-processing-nlp-in-python/token-classification-and-text-generation?ex=5
         """
-        qst = question.lower()
+        qst_lower = question.lower()
+        tokens = self.tokenize(qst_lower)
 
-        # Answer the 5 W's (who, what, when, how, and why) of a sentence
-        if qst.startswith("who"):
-            if "to" in qst or "receive" in qst:
-                return "WHO_RECIPIENT"
-            return "WHO_AGENT"
-        elif qst.startswith("what"):
-            if "color" in qst:
-                return "WHAT_COLOR"
-            return "WHAT_OBJECT"
-        elif qst.startswith("where"):
-            return "WHERE"
-        elif qst.startswith("when"):
-            return "WHEN"
-        elif qst.startswith("how"):
-            return "HOW"
-        elif qst.startswith("why"):
-            return "WHY"
-        elif "with what" in qst:
-            return "WITH_WHAT"
-        elif "with whom" in qst:
+        wh_idx = None
+        wh_word = None
+
+        for i, tok in enumerate(tokens):
+            if tok in self.W_WORDS:
+                wh_idx = i
+                wh_word = tok
+                break
+
+        if wh_word is None:
+            return "UNKNOWN"
+
+        # Get surrounding tokens
+        prev_token = tokens[wh_idx - 1] if wh_idx > 0 else None
+        next_token = tokens[wh_idx + 1] if wh_idx + 1 < len(tokens) else None
+        last_token = tokens[-1]
+
+        # Rule 1: PREP + WH (e.g., "with whom", "at what time")
+        if prev_token == "with":
+            if wh_word in {"who", "whom"}:
+                return "WITH_WHOM"
+            else:
+                return "WITH_WHAT"
+        if prev_token == "to":
+            return "WHO_RECIPIENT"
+
+        # Rule 2: WH + MODIFIER (e.g., "how far", "what time")
+        if next_token in self.W_MODIFIERS:
+            return self.W_MODIFIERS[next_token]
+
+        # Rule 3: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
+        if wh_word in {"who", "whom"} and "with" in tokens:
             return "WITH_WHOM"
 
-        return "UNKNOWN"
+        # Rule 4: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
+        if wh_word in {"who", "whom"} and last_token == "to":
+            return "WHO_RECIPIENT"
+
+        # Rule 5: HOW + movement verb
+        if wh_word == "how":
+            if self.W_MOVEMENT & set(tokens):
+                return "HOW_METHOD"
+
+        # Rule 6: Base WH-word (fallback)
+        return self.W_BASE.get(wh_word, "UNKNOWN")
 
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
