@@ -612,7 +612,7 @@ class SentenceReadingAgent:
         tokens = text.split()
         return tokens
 
-    def get_pos(self, word: str, prev_word: str = None) -> str:
+    def get_pos(self, word: str, prev_word: str = None, next_word: str = None) -> str:
         """Get part-of-speech tag for a word.
 
         Args:
@@ -631,6 +631,16 @@ class SentenceReadingAgent:
         # Check known words first
         if word_lower in self.NAMES:
             return "PROPN"
+
+        # handle ambigour 'to' position.
+        if word_lower == "to":
+            if next_word:
+                next_data = self.WORD_DATA.get(next_word, None)
+                if "pos" in next_data and next_data.get("pos") == "VERB":
+                    return "PART"
+                else:
+                    return "ADP"
+
         if word_lower in self.WORD_DATA:
             return self.WORD_DATA[word_lower]["pos"]
         if self.TIME_PATTERN.match(word):
@@ -670,14 +680,16 @@ class SentenceReadingAgent:
         if len(tokens) > 1:
             for i, token in enumerate(tokens):
                 prev_token = tokens[i - 1] if i > 0 else None
+                next_token = tokens[i + 1] if i < len(tokens) - 1 else None
                 tagged_tokens.append(
-                    (token, self.get_pos(word=token, prev_word=prev_token))
+                    (
+                        token,
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                    )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
