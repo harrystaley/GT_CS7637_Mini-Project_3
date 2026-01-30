@@ -707,12 +707,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -881,17 +885,47 @@ class SentenceReadingAgent:
         print(f"frame: {frame}")
         q_type = self.classify_question(question)
 
-        if q_type == "WHO_AGENT":
+        q_type_parts = q_type.split("_")
+
+        if q_type_parts[0] == "WHO":
             if frame["agents"]:
                 ans = frame["agents"][0]
-        elif q_type == "WHAT_OBJECT":
-            if frame["objects"]:
-                ans = frame["objects"][0]
-        elif q_type == "WHERE":
-            if frame["locations"]:
-                ans = frame["locations"][0]
-        elif q_type == "WHEN":
+        elif q_type_parts[0] == "WHAT":
+            if q_type_parts[1] == "OBJECT":
+                if frame["objects"]:
+                    ans = frame["objects"][0]
+        elif q_type_parts[0] == "WHEN":
             if frame["times"]:
                 ans = frame["times"][0]
+        elif q_type_parts[0] == "WHERE":
+            if frame["locations"]:
+                ans = frame["locations"][0]
+        elif q_type_parts[0] == "WHY":
+            pass
+        elif q_type_parts[0] == "HOW":
+            if q_type_parts[1] == "METHOD":
+                if frame["action"]:
+                    ans = frame["action"]
+            elif q_type_parts[1] == "FAR":
+                if frame["distances"]:
+                    ans = frame["distances"][0]
+            elif q_type_parts[1] == "LONG":
+                if frame["modifiers"]:
+                    ans = frame["modifiers"][0]
+            elif q_type_parts[1] == "QUANTITY":
+                if frame["quantities"]:
+                    ans = frame["quantities"][0]
+            elif q_type_parts[1] == "COLOR":
+                if frame["colors"]:
+                    ans = frame["colors"][0]
+            elif q_type_parts[1] == "FREQUENCY":
+                if frame["frequencies"]:
+                    ans = frame["frequencies"][0]
+
+        # edge case where the person is not in the question.
+        if q_type == "WITH_WHOM":
+            for name in frame["agents"]:
+                if name.lower() not in question.lower():
+                    return name
 
         return ans
