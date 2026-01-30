@@ -845,7 +845,7 @@ class SentenceReadingAgent:
         # Rule 1: PREP + WH (e.g., "with whom", "at what time")
         if prev_token == "with":
             if wh_word in {"who", "whom"}:
-                return "WITH_WHOM"
+                return "WHO_WITH"
             else:
                 return "WITH_WHAT"
         if prev_token == "to":
@@ -857,7 +857,7 @@ class SentenceReadingAgent:
 
         # Rule 3: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
         if wh_word in {"who", "whom"} and "with" in tokens:
-            return "WITH_WHOM"
+            return "WHO_WITH"
 
         # Rule 4: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
         if wh_word in {"who", "whom"} and last_token == "to":
@@ -884,13 +884,19 @@ class SentenceReadingAgent:
         frame = self.get_frame_from_tagged_tokens(tagged_tokens)
         print(f"frame: {frame}")
         q_type = self.classify_question(question)
+        print(f"q_type: {q_type}")
 
         q_type_parts = q_type.split("_")
-
+        # do the 5w's in question types and then get subtypes from that.
         if q_type_parts[0] == "WHO":
-            if len(q_type_parts) > 1 and q_type_parts[1] == "RECIPIENT":
-                if frame["recipients"]:
-                    return frame["recipients"][0]
+            if len(q_type_parts) > 1:
+                if q_type_parts[1] == "RECIPIENT":
+                    if frame["recipients"]:
+                        return frame["recipients"][0]
+                elif q_type_parts[1] == "WITH":
+                    for name in frame["agents"]:
+                        if name.lower() not in question.lower():
+                            return name
             # Fall back to AGENT
             if frame["agents"]:
                 return frame["agents"][0]
@@ -927,11 +933,5 @@ class SentenceReadingAgent:
             elif q_type_parts[1] == "FREQUENCY":
                 if frame["frequencies"]:
                     ans = frame["frequencies"][0]
-
-        # edge case where the person is not in the question.
-        if q_type == "WITH_WHOM":
-            for name in frame["agents"]:
-                if name.lower() not in question.lower():
-                    return name
 
         return ans
