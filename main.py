@@ -75,6 +75,8 @@ S21 = "This year David will watch a play."
         ("Serena ran this morning.", "When did Serena run?", "this morning"),
         ("We will meet next Thursday.", "When will we meet?", "next Thursday"),
         ("He left last night.", "When did he leave?", "last night"),
+        ("Serena ran this morning.", "When did Serena run?", "this morning"),
+        ("He left last night.", "When did he leave?", "last night"),
     ],
 )
 def test_solve(agent, sentence, question, expected):
