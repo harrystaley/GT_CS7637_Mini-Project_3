@@ -778,12 +778,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -965,7 +969,6 @@ class SentenceReadingAgent:
             sentence: The sentence used to answer the question.
             question: The question that pplies to the sentence.
         """
-        ans = ""
         tokens = self.tokenize(sentence)
         tagged_tokens = self.tag_tokens(tokens)
         print(f"tagged_tokens: {tagged_tokens}")
@@ -976,6 +979,8 @@ class SentenceReadingAgent:
 
         q_type_parts = q_type.split("_")
         # do the 5w's in question types and then get subtypes from that.
+
+        # WHO
         if q_type_parts[0] == "WHO":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "RECIPIENT":
@@ -988,7 +993,7 @@ class SentenceReadingAgent:
             # Fall back to AGENT
             if frame["agents"]:
                 return frame["agents"][0]
-
+        # WHAT
         elif q_type_parts[0] == "WHAT":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "OBJECT":
@@ -1002,6 +1007,7 @@ class SentenceReadingAgent:
                         if token in frame["modifiers"]:
                             return frame["modifiers"][token]
 
+        # WHEN
         elif q_type_parts[0] == "WHEN":
             if frame["times"]:
                 # Prefer numeric time (8:00AM) over word time
@@ -1009,11 +1015,14 @@ class SentenceReadingAgent:
                     if self.TIME_PATTERN.match(t):
                         return t
                 return frame["times"][-1]
+        # WHERE
         elif q_type_parts[0] == "WHERE":
             if frame["locations"]:
                 return frame["locations"][-1]
+        # WHY
         elif q_type_parts[0] == "WHY":
             pass
+        # HOW
         elif q_type_parts[0] == "HOW":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "METHOD":
@@ -1034,4 +1043,4 @@ class SentenceReadingAgent:
                     if frame["quantities"]:
                         return frame["quantities"][-1]
 
-        return ans
+        return ""
