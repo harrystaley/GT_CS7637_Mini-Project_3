@@ -778,12 +778,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -980,14 +984,15 @@ class SentenceReadingAgent:
                 return frame["agents"][0]
 
         elif q_type_parts[0] == "WHAT":
-            if q_type_parts[1] == "OBJECT":
-                if frame["objects"]:
-                    ans = frame["objects"][0]
-            elif q_type_parts[1] in ["COLOR"]:
-                q_tokens = self.tokenize(question)
-                for token in q_tokens:
-                    if token in frame["modifiers"]:
-                        return frame["modifiers"][token]
+            if len(q_type_parts) > 1:
+                if q_type_parts[1] == "OBJECT":
+                    if frame["objects"]:
+                        ans = frame["objects"][0]
+                elif q_type_parts[1] in ["COLOR"]:
+                    q_tokens = self.tokenize(question)
+                    for token in q_tokens:
+                        if token in frame["modifiers"]:
+                            return frame["modifiers"][token]
 
         elif q_type_parts[0] == "WHEN":
             if frame["times"]:
@@ -1002,22 +1007,23 @@ class SentenceReadingAgent:
         elif q_type_parts[0] == "WHY":
             pass
         elif q_type_parts[0] == "HOW":
-            if q_type_parts[1] == "METHOD":
-                if frame["action"]:
-                    ans = frame["action"]
-            elif q_type_parts[1] == "FAR":
-                if frame["distances"]:
-                    ans = frame["distances"][0]
-            elif q_type_parts[1] in ["LONG", "OLD"]:
-                q_tokens = self.tokenize(question)
-                for token in q_tokens:
-                    if token in frame["modifiers"]:
-                        return frame["modifiers"][token]
-            elif q_type_parts[1] == "QUANTITY":
-                if frame["quantities"]:
-                    ans = frame["quantities"][0]
-            elif q_type_parts[1] == "FREQUENCY":
-                if frame["frequencies"]:
-                    ans = frame["frequencies"][0]
+            if len(q_type_parts) > 1:
+                if q_type_parts[1] == "METHOD":
+                    if frame["action"]:
+                        ans = frame["action"]
+                elif q_type_parts[1] == "FAR":
+                    if frame["distances"]:
+                        ans = frame["distances"][0]
+                elif q_type_parts[1] in ["LONG", "OLD"]:
+                    q_tokens = self.tokenize(question)
+                    for token in q_tokens:
+                        if token in frame["modifiers"]:
+                            return frame["modifiers"][token]
+                elif q_type_parts[1] == "QUANTITY":
+                    if frame["quantities"]:
+                        ans = frame["quantities"][0]
+                elif q_type_parts[1] == "FREQUENCY":
+                    if frame["frequencies"]:
+                        ans = frame["frequencies"][0]
 
         return ans
