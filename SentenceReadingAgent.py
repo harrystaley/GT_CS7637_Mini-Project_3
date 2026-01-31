@@ -565,7 +565,7 @@ class SentenceReadingAgent:
             "sit": {"pos": "VERB", "lemma": "sit"},
             "perhaps": {"pos": "ADV", "lemma": "perhaps"},
             "fill": {"pos": "VERB", "lemma": "fill"},
-            "east": {"pos": "PROPN", "lemma": "east"},
+            "east": {"pos": "NOUN", "lemma": "east"},
             "weight": {"pos": "NOUN", "lemma": "weight"},
             "language": {"pos": "NOUN", "lemma": "language"},
             "among": {"pos": "ADP", "lemma": "among"},
@@ -778,12 +778,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -809,6 +813,7 @@ class SentenceReadingAgent:
             "companions": [],  # COMITATIVE case
             "modifiers": {},  # Adjective-noun links
             "distances": [],  # Measure phrases
+            "quantities": [],
         }
         verb_idx = None
         for i, (word, pos) in enumerate(tagged_tokens):
@@ -858,12 +863,14 @@ class SentenceReadingAgent:
             elif pos == "TIME":
                 frame["times"].append(word)
             elif pos in ["NOUN", "PROPN"]:
-                # Handle measure phrases like "3 feet" or "2 miles"
+                # Handle measure phrases like "3 feet" or "2 miles" or quantity
                 if current_num and word.lower() in self.DIST:
                     frame["distances"].append(f"{current_num} {word}")
                     current_num = None
                     current_prep = None
                     continue
+                elif current_num:
+                    frame["quantities"].append(f"{current_num} {word}")
                 # Assign role based on preposition
                 if current_prep is None:
                     frame["objects"].append(word)
@@ -991,6 +998,8 @@ class SentenceReadingAgent:
                 if q_type_parts[1] == "OBJECT":
                     if frame["objects"]:
                         ans = frame["objects"][0]
+                    if frame["agents"]:
+                        ans = frame["agents"][-1]
                 elif q_type_parts[1] in ["COLOR"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
@@ -1017,6 +1026,9 @@ class SentenceReadingAgent:
                 elif q_type_parts[1] == "FAR":
                     if frame["distances"]:
                         ans = frame["distances"][0]
+                elif q_type_parts[1] == "MANY":
+                    if frame["quantities"]:
+                        ans = frame["quantities"][0]
                 elif q_type_parts[1] in ["LONG", "OLD"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
@@ -1025,8 +1037,5 @@ class SentenceReadingAgent:
                 elif q_type_parts[1] == "QUANTITY":
                     if frame["quantities"]:
                         ans = frame["quantities"][0]
-                elif q_type_parts[1] == "FREQUENCY":
-                    if frame["frequencies"]:
-                        ans = frame["frequencies"][0]
 
         return ans
