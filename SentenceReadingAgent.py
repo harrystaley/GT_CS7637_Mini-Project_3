@@ -784,12 +784,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -924,6 +928,9 @@ class SentenceReadingAgent:
 
             prev_word = word
 
+            # Handle predicate adjectives: "The water is blue"
+            if current_adj and frame["agents"]:
+                frame["modifiers"][frame["agents"][-1]] = current_adj
         return frame
 
     def classify_question(self, question: str) -> str:
