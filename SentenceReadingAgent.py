@@ -784,16 +784,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -1017,7 +1013,10 @@ class SentenceReadingAgent:
         # WHO
         if q_type_parts[0] == "WHO":
             if len(q_type_parts) > 1:
-                if q_type_parts[1] == "RECIPIENT":
+                if q_type_parts[1] == "AGENT":
+                    if frame["agents"]:
+                        return frame["agents"][-1]
+                elif q_type_parts[1] == "RECIPIENT":
                     if frame["recipients"]:
                         return frame["recipients"][-1]
                 elif q_type_parts[1] == "WITH":
