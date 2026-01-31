@@ -63,6 +63,15 @@ S21 = "This year David will watch a play."
         (S19, "What color is the water?", "blue"),
         (S20, "Who is in the car?", "men"),
         (S21, "Who will watch a play?", "David"),
+        ("The island is east of the city.", "Where is the island?", "east"),
+        (
+            "There are one hundred adults in that city.",
+            "Who is in this city?",
+            "adults",
+        ),
+        ("My dog Red is very large.", "What animal is Red?", "dog"),
+        ("This tree came from the island.", "What came from the island?", "tree"),
+        ("This year David will watch a play.", "What will David watch?", "play"),
     ],
 )
 def test_solve(agent, sentence, question, expected):
