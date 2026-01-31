@@ -778,16 +778,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -820,6 +816,13 @@ class SentenceReadingAgent:
                 verb_idx = i
                 frame["action"] = word
                 break
+        # fallback to AUX
+        if verb_idx is None:
+            for i, (word, pos) in enumerate(tagged_tokens):
+                if pos == "AUX":
+                    verb_idx = i
+                    frame["action"] = word
+                    break
 
         if verb_idx is None:
             return frame
