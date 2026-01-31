@@ -596,6 +596,53 @@ class SentenceReadingAgent:
         }
         self.DIST = {"mile", "foot", "feet", "meter", "kilometer", "inch", "yard"}
         self.TIME_PATTERN = re.compile(r"\d{1,2}:\d{2}(AM|PM)?", re.IGNORECASE)
+        self.TIME_MARKERS = {"this", "last", "next", "every", "on"}
+        self.TIME_WORDS = {
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+            "today",
+            "tomorrow",
+            "yesterday",
+            "now",
+            "soon",
+            "later",
+            "recently",
+            "morning",
+            "afternoon",
+            "evening",
+            "night",
+            "noon",
+            "midnight",
+            "spring",
+            "summer",
+            "fall",
+            "autumn",
+            "winter",
+            "week",
+            "month",
+            "year",
+            "day",
+            "hour",
+            "minute",
+            "second",
+        }
         self.CLAUSE_MARKERS = {"when", "while", "if", "because", "although", "unless"}
         self.W_WORDS = {"who", "whom", "what", "where", "when", "why", "how"}
         self.W_MODIFIERS = {
@@ -639,7 +686,8 @@ class SentenceReadingAgent:
 
         Args:
             word: The given word that needs to be tagged.
-            prev_word: The previous word in the sentence, used to determine.
+            prev_word: The previous word in the sentence.
+            next_word: The next word in the sentence.
 
         References:
             - Part of Speech Tagging:
@@ -655,7 +703,7 @@ class SentenceReadingAgent:
             return "PROPN"
 
         # handle ambigour 'to' position.
-        if word_lower == "to":
+        elif word_lower == "to":
             if next_word:
                 next_data = self.WORD_DATA.get(next_word, None)
                 if "pos" in next_data and next_data.get("pos") == "VERB":
@@ -664,13 +712,14 @@ class SentenceReadingAgent:
                     return "ADP"
             return "ADP"
 
-        if word_lower in self.WORD_DATA:
-            return self.WORD_DATA[word_lower]["pos"]
-        if self.TIME_PATTERN.match(word):
+        elif self.TIME_PATTERN.match(word) or word_lower in self.TIME_WORDS:
             return "TIME"
 
+        elif word_lower in self.WORD_DATA:
+            return self.WORD_DATA[word_lower]["pos"]
+
         # Infer from context: article/adjective usually precedes noun
-        if prev_word and prev_word.lower() in {
+        elif prev_word and prev_word.lower() in {
             "a",
             "an",
             "the",
@@ -681,18 +730,18 @@ class SentenceReadingAgent:
             return "NOUN"
 
         # Infer from morphology (suffix patterns)
-        if word_lower.endswith(("tion", "ness", "ment", "ity", "er", "or")):
+        elif word_lower.endswith(("tion", "ness", "ment", "ity", "er", "or")):
             return "NOUN"
-        if word_lower.endswith(("ly",)):
+        elif word_lower.endswith(("ly",)):
             return "ADV"
-        if word_lower.endswith(("ed", "ing")) and len(word_lower) > 4:
+        elif word_lower.endswith(("ed", "ing")) and len(word_lower) > 4:
             return "VERB"
 
         # Capitalized mid-sentence = likely proper noun
-        if word[0].isupper():
+        elif word[0].isupper():
             return "PROPN"
-
-        return "NOUN"  # Default guess: noun (most common for unknowns)
+        else:
+            return "NOUN"  # Default guess: noun (most common for unknowns)
 
     def tag_tokens(self, tokens: list[str]) -> list[tuple[str, str]]:
         """Tag all tokens with POS and return the list of tuples.
@@ -794,7 +843,10 @@ class SentenceReadingAgent:
                     else:
                         frame["locations"].append(word)
                 elif current_prep in ["at", "in", "on", "from"]:
-                    frame["locations"].append(word)
+                    if current_prep == "on" and word.lower() in self.TIME_WORDS:
+                        frame["times"].append(word)
+                    else:
+                        frame["locations"].append(word)
                 elif current_prep == "with":
                     if pos == "PROPN":
                         frame["companions"].append(word)
@@ -828,6 +880,7 @@ class SentenceReadingAgent:
         wh_idx = None
         wh_word = None
 
+        # Step 1: Tokenize the question.
         for i, tok in enumerate(tokens):
             if tok in self.W_WORDS:
                 wh_idx = i
@@ -837,10 +890,12 @@ class SentenceReadingAgent:
         if wh_word is None:
             return "UNKNOWN"
 
-        # Get surrounding tokens
+        # Step 2: Get surrounding tokens
         prev_token = tokens[wh_idx - 1] if wh_idx > 0 else None
         next_token = tokens[wh_idx + 1] if wh_idx + 1 < len(tokens) else None
         last_token = tokens[-1]
+
+        # Step 3: classify the question based upon the rules.
 
         # Rule 1: PREP + WH (e.g., "with whom", "at what time")
         if prev_token == "with":
@@ -906,7 +961,11 @@ class SentenceReadingAgent:
                     ans = frame["objects"][0]
         elif q_type_parts[0] == "WHEN":
             if frame["times"]:
-                ans = frame["times"][0]
+                # Prefer numeric time (8:00AM) over word time
+                for t in frame["times"]:
+                    if self.TIME_PATTERN.match(t):
+                        return t
+                return frame["times"][-1]
         elif q_type_parts[0] == "WHERE":
             if frame["locations"]:
                 ans = frame["locations"][0]
