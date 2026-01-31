@@ -22,6 +22,14 @@ S10 = "Frank took the horse to the farm."
 S11 = "Give us all your money."
 S12 = "There are three men in the car."
 S13 = "It will snow soon."
+S14 = "The house is made of paper."
+S15 = "Frank was busy last night."
+S16 = "She will write him a love letter."
+S17 = "This year will be the best one yet."
+S18 = "A tree is made of wood."
+S19 = "The water is blue."
+S20 = "There are three men in the car."
+S21 = "This year David will watch a play."
 
 
 @pytest.mark.parametrize(
@@ -47,6 +55,14 @@ S13 = "It will snow soon."
         (S11, "What should you give us?", "money"),
         (S12, "Where are the men?", "car"),
         (S13, "When will it snow?", "soon"),
+        (S14, "What is the house made of?", "paper"),
+        (S15, "When was Frank busy?", "last night"),
+        (S16, "What will she write to him?", "letter"),
+        (S17, "What will this year be?", "best"),
+        (S18, "What is made of wood?", "tree"),
+        (S19, "What color is the water?", "blue"),
+        (S20, "Who is in the car?", "men"),
+        (S21, "Who will watch a play?", "David"),
     ],
 )
 def test_solve(agent, sentence, question, expected):
