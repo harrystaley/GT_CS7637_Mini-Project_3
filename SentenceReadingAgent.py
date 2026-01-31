@@ -838,15 +838,23 @@ class SentenceReadingAgent:
         current_num = None
 
         # Before verb → agents with modifiers
+        prev_word = None
         for word, pos in tagged_tokens[:verb_idx]:
             if pos == "ADJ":
                 current_adj = word
+            elif pos == "TIME":
+                if prev_word and prev_word.lower() in self.TIME_MARKERS:
+                    frame["times"].append(f"{prev_word} {word}")
+                else:
+                    frame["times"].append(word)
             elif pos in ["PROPN", "NOUN"]:
                 frame["agents"].append(word)
                 if current_adj:
                     frame["modifiers"][word] = current_adj
                     current_adj = None
+            prev_word = word
 
+        prev_word = None
         for word, pos in tagged_tokens[verb_idx + 1 :]:
             # stop if the word is a clause marker.
             if word.lower() in self.CLAUSE_MARKERS:
@@ -859,9 +867,13 @@ class SentenceReadingAgent:
             elif pos == "ADJ":
                 current_adj = word
             elif pos == "DET":
+                prev_word = word
                 continue
             elif pos == "TIME":
-                frame["times"].append(word)
+                if prev_word and prev_word.lower() in self.TIME_MARKERS:
+                    frame["times"].append(f"{prev_word} {word}")
+                else:
+                    frame["times"].append(word)
             elif pos in ["NOUN", "PROPN"]:
                 # Handle measure phrases like "3 feet" or "2 miles" or quantity
                 if current_num and word.lower() in self.DIST:
@@ -896,6 +908,8 @@ class SentenceReadingAgent:
                     current_adj = None
 
                 current_prep = None
+
+            prev_word = word
 
         return frame
 
