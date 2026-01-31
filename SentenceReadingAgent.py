@@ -778,16 +778,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -984,7 +980,7 @@ class SentenceReadingAgent:
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "RECIPIENT":
                     if frame["recipients"]:
-                        return frame["recipients"][0]
+                        return frame["recipients"][-1]
                 elif q_type_parts[1] == "WITH":
                     for name in frame["agents"]:
                         if name.lower() not in question.lower():
@@ -997,9 +993,9 @@ class SentenceReadingAgent:
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "OBJECT":
                     if frame["objects"]:
-                        ans = frame["objects"][0]
+                        return frame["objects"][-1]
                     if frame["agents"]:
-                        ans = frame["agents"][-1]
+                        return frame["agents"][-1]
                 elif q_type_parts[1] in ["COLOR"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
@@ -1015,20 +1011,20 @@ class SentenceReadingAgent:
                 return frame["times"][-1]
         elif q_type_parts[0] == "WHERE":
             if frame["locations"]:
-                ans = frame["locations"][0]
+                return frame["locations"][-1]
         elif q_type_parts[0] == "WHY":
             pass
         elif q_type_parts[0] == "HOW":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "METHOD":
                     if frame["action"]:
-                        ans = frame["action"]
+                        return frame["action"]
                 elif q_type_parts[1] == "FAR":
                     if frame["distances"]:
-                        ans = frame["distances"][0]
+                        return frame["distances"][-1]
                 elif q_type_parts[1] == "MANY":
                     if frame["quantities"]:
-                        ans = frame["quantities"][0]
+                        return frame["quantities"][-1]
                 elif q_type_parts[1] in ["LONG", "OLD"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
@@ -1036,6 +1032,6 @@ class SentenceReadingAgent:
                             return frame["modifiers"][token]
                 elif q_type_parts[1] == "QUANTITY":
                     if frame["quantities"]:
-                        ans = frame["quantities"][0]
+                        return frame["quantities"][-1]
 
         return ans
