@@ -571,6 +571,24 @@ class SentenceReadingAgent:
             "among": {"pos": "ADP", "lemma": "among"},
             "adult": {"pos": "NOUN", "lemma": "adult"},
             "adults": {"pos": "NOUN", "lemma": "adult"},
+            "yellow": {"pos": "ADJ", "lemma": "yellow"},
+            "orange": {"pos": "ADJ", "lemma": "orange"},
+            "purple": {"pos": "ADJ", "lemma": "purple"},
+            "brown": {"pos": "ADJ", "lemma": "brown"},
+            "pink": {"pos": "ADJ", "lemma": "pink"},
+            "gray": {"pos": "ADJ", "lemma": "gray"},
+            "grey": {"pos": "ADJ", "lemma": "grey"},
+            "silver": {"pos": "ADJ", "lemma": "silver"},
+            "tiny": {"pos": "ADJ", "lemma": "tiny"},
+            "huge": {"pos": "ADJ", "lemma": "huge"},
+            "tall": {"pos": "ADJ", "lemma": "tall"},
+            "wide": {"pos": "ADJ", "lemma": "wide"},
+            "narrow": {"pos": "ADJ", "lemma": "narrow"},
+            "thick": {"pos": "ADJ", "lemma": "thick"},
+            "thin": {"pos": "ADJ", "lemma": "thin"},
+            "ancient": {"pos": "ADJ", "lemma": "ancient"},
+            "modern": {"pos": "ADJ", "lemma": "modern"},
+            "fresh": {"pos": "ADJ", "lemma": "fresh"},
         }
         self.NAMES = {
             "ada",
@@ -663,6 +681,10 @@ class SentenceReadingAgent:
             "when": "WHEN",
             "why": "WHY",
             "how": "HOW",
+            "color": "WHAT_COLOR",
+            "long": "HOW_LONG",
+            "far": "HOW_FAR",
+            "old": "HOW_OLD",
         }
 
     def tokenize(self, text: str) -> list:
@@ -802,15 +824,20 @@ class SentenceReadingAgent:
         if verb_idx is None:
             return frame
 
-        # Before verb → agents
-        for word, pos in tagged_tokens[:verb_idx]:
-            if pos in ["PROPN", "NOUN"]:
-                frame["agents"].append(word)
-
         # After verb → other roles based on prepositions
         current_prep = None
         current_adj = None
         current_num = None
+
+        # Before verb → agents with modifiers
+        for word, pos in tagged_tokens[:verb_idx]:
+            if pos == "ADJ":
+                current_adj = word
+            elif pos in ["PROPN", "NOUN"]:
+                frame["agents"].append(word)
+                if current_adj:
+                    frame["modifiers"][word] = current_adj
+                    current_adj = None
 
         for word, pos in tagged_tokens[verb_idx + 1 :]:
             # stop if the word is a clause marker.
@@ -955,10 +982,17 @@ class SentenceReadingAgent:
             # Fall back to AGENT
             if frame["agents"]:
                 return frame["agents"][0]
+
         elif q_type_parts[0] == "WHAT":
             if q_type_parts[1] == "OBJECT":
                 if frame["objects"]:
                     ans = frame["objects"][0]
+            elif q_type_parts[1] in ["COLOR"]:
+                q_tokens = self.tokenize(question)
+                for token in q_tokens:
+                    if token in frame["modifiers"]:
+                        return frame["modifiers"][token]
+
         elif q_type_parts[0] == "WHEN":
             if frame["times"]:
                 # Prefer numeric time (8:00AM) over word time
@@ -978,7 +1012,7 @@ class SentenceReadingAgent:
             elif q_type_parts[1] == "FAR":
                 if frame["distances"]:
                     ans = frame["distances"][0]
-            elif q_type_parts[1] == "LONG":
+            elif q_type_parts[1] in ["LONG", "OLD"]:
                 q_tokens = self.tokenize(question)
                 for token in q_tokens:
                     if token in frame["modifiers"]:
@@ -986,9 +1020,6 @@ class SentenceReadingAgent:
             elif q_type_parts[1] == "QUANTITY":
                 if frame["quantities"]:
                     ans = frame["quantities"][0]
-            elif q_type_parts[1] == "COLOR":
-                if frame["colors"]:
-                    ans = frame["colors"][0]
             elif q_type_parts[1] == "FREQUENCY":
                 if frame["frequencies"]:
                     ans = frame["frequencies"][0]
