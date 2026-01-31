@@ -132,7 +132,7 @@ class SentenceReadingAgent:
             "so": {"pos": "ADV", "lemma": "so"},
             "these": {"pos": "PRON", "lemma": "these"},
             "her": {"pos": "PRON", "lemma": "she"},
-            "long": {"pos": "ADV", "lemma": "long"},
+            "long": {"pos": "ADJ", "lemma": "long"},
             "make": {"pos": "VERB", "lemma": "make"},
             "thing": {"pos": "NOUN", "lemma": "thing"},
             "see": {"pos": "VERB", "lemma": "see"},
@@ -502,7 +502,7 @@ class SentenceReadingAgent:
             "week": {"pos": "NOUN", "lemma": "week"},
             "final": {"pos": "ADJ", "lemma": "final"},
             "gave": {"pos": "VERB", "lemma": "give"},
-            "green": {"pos": "PROPN", "lemma": "green"},
+            "green": {"pos": "ADJ", "lemma": "green"},
             "oh": {"pos": "INTJ", "lemma": "oh"},
             "quick": {"pos": "ADJ", "lemma": "quick"},
             "develop": {"pos": "VERB", "lemma": "develop"},
@@ -541,7 +541,7 @@ class SentenceReadingAgent:
             "record": {"pos": "PROPN", "lemma": "record"},
             "boat": {"pos": "NOUN", "lemma": "boat"},
             "common": {"pos": "ADJ", "lemma": "common"},
-            "gold": {"pos": "NOUN", "lemma": "gold"},
+            "gold": {"pos": "ADJ", "lemma": "gold"},
             "possible": {"pos": "ADJ", "lemma": "possible"},
             "plane": {"pos": "NOUN", "lemma": "plane"},
             "age": {"pos": "NOUN", "lemma": "age"},
@@ -778,16 +778,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
