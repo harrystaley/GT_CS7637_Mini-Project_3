@@ -419,7 +419,7 @@ class SentenceReadingAgent:
             "king": {"pos": "NOUN", "lemma": "king"},
             "size": {"pos": "NOUN", "lemma": "size"},
             "heard": {"pos": "VERB", "lemma": "hear"},
-            "best": {"pos": "ADV", "lemma": "well"},
+            "best": {"pos": "ADJ", "lemma": "well"},
             "hour": {"pos": "NOUN", "lemma": "hour"},
             "better": {"pos": "ADV", "lemma": "well"},
             "true": {"pos": "ADJ", "lemma": "true"},
@@ -686,6 +686,7 @@ class SentenceReadingAgent:
             "far": "HOW_FAR",
             "old": "HOW_OLD",
         }
+        self.DIRECTIONS = {"east", "west", "north", "south"}
 
     def tokenize(self, text: str) -> list:
         """Tokenize the sentence returning a list of the tokens.
@@ -737,9 +738,6 @@ class SentenceReadingAgent:
         elif self.TIME_PATTERN.match(word) or word_lower in self.TIME_WORDS:
             return "TIME"
 
-        elif word_lower in self.WORD_DATA:
-            return self.WORD_DATA[word_lower]["pos"]
-
         # Infer from context: article/adjective usually precedes noun
         elif prev_word and prev_word.lower() in {
             "a",
@@ -749,7 +747,15 @@ class SentenceReadingAgent:
             "that",
             "some",
         }:
+            if word_lower in self.WORD_DATA:
+                pos = self.WORD_DATA[word_lower]["pos"]
+                if pos == "VERB":
+                    return "NOUN"  # "a play" → NOUN
+                return pos  # "the best" → stays ADJ
             return "NOUN"
+
+        elif word_lower in self.WORD_DATA:
+            return self.WORD_DATA[word_lower]["pos"]
 
         # Infer from morphology (suffix patterns)
         elif word_lower.endswith(("tion", "ness", "ment", "ity", "er", "or")):
@@ -778,16 +784,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -869,12 +871,20 @@ class SentenceReadingAgent:
             elif pos == "DET":
                 prev_word = word
                 continue
+
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
                     frame["times"].append(f"{prev_word} {word}")
                 else:
                     frame["times"].append(word)
+
             elif pos in ["NOUN", "PROPN"]:
+                # Handle directions as locations
+                if word.lower() in self.DIRECTIONS and current_prep is None:
+                    frame["locations"].append(word)
+                    prev_word = word
+                    continue
+
                 # Handle measure phrases like "3 feet" or "2 miles" or quantity
                 if current_num and word.lower() in self.DIST:
                     frame["distances"].append(f"{current_num} {word}")
@@ -883,6 +893,7 @@ class SentenceReadingAgent:
                     continue
                 elif current_num:
                     frame["quantities"].append(f"{current_num} {word}")
+
                 # Assign role based on preposition
                 if current_prep is None:
                     frame["objects"].append(word)
@@ -891,6 +902,8 @@ class SentenceReadingAgent:
                         frame["recipients"].append(word)
                     else:
                         frame["locations"].append(word)
+                elif current_prep == "of":
+                    frame["objects"].append(word)
                 elif current_prep in ["at", "in", "on", "from"]:
                     if current_prep == "on" and word.lower() in self.TIME_WORDS:
                         frame["times"].append(word)
@@ -1004,9 +1017,14 @@ class SentenceReadingAgent:
                     for name in frame["agents"]:
                         if name.lower() not in question.lower():
                             return name
-            # Fall back to AGENT
-            if frame["agents"]:
-                return frame["agents"][0]
+                    if frame["agents"]:
+                        return frame["agents"][0]
+                # Fallback for existential sentences ("There are men")
+                if frame["objects"]:
+                    return frame["objects"][0]
+                # Fall back to AGENT
+                if frame["agents"]:
+                    return frame["agents"][0]
         # WHAT
         elif q_type_parts[0] == "WHAT":
             if len(q_type_parts) > 1:
