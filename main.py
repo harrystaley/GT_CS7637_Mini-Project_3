@@ -77,6 +77,18 @@ S21 = "This year David will watch a play."
         ("He left last night.", "When did he leave?", "last night"),
         ("Serena ran this morning.", "When did Serena run?", "this morning"),
         ("He left last night.", "When did he leave?", "last night"),
+        (
+            "There are a thousand children in this town.",
+            "How many children are in this town?",
+            "a thousand children",
+        ),
+        ("The island is east of the city.", "What is east of the city?", "island"),
+        (
+            "The white dog and the blue horse play together.",
+            "What animal is white?",
+            "dog",
+        ),
+        ("The house is made of paper.", "What is made of paper?", "house"),
     ],
 )
 def test_solve(agent, sentence, question, expected):
