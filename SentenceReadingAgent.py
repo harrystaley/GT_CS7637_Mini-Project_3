@@ -720,6 +720,19 @@ class SentenceReadingAgent:
             "million",
             "billion",
         }
+        self.frame = {
+            "agents": [],  # Fillmore's AGENT case
+            "action": None,  # The predicate/verb
+            "objects": [],  # PATIENT/THEME case
+            "recipients": [],  # RECIPIENT/GOAL case
+            "locations": [],  # LOCATION case
+            "times": [],  # TEMPORAL adjunct
+            "instruments": [],  # INSTRUMENT case
+            "companions": [],  # COMITATIVE case
+            "modifiers": {},  # Adjective-noun links
+            "distances": [],  # Measure phrases
+            "quantities": [],
+        }
 
     def _is_hyphenated_number(self, word: str) -> bool:
         """Check if word is a hyphenated number like twenty-one or thirty-two."""
@@ -825,16 +838,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def load_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]):
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -849,35 +858,22 @@ class SentenceReadingAgent:
             - Semantic Roles in NLP
                 https://www.geeksforgeeks.org/nlp/semantic-roles-in-nlp/
         """
-        frame = {
-            "agents": [],  # Fillmore's AGENT case
-            "action": None,  # The predicate/verb
-            "objects": [],  # PATIENT/THEME case
-            "recipients": [],  # RECIPIENT/GOAL case
-            "locations": [],  # LOCATION case
-            "times": [],  # TEMPORAL adjunct
-            "instruments": [],  # INSTRUMENT case
-            "companions": [],  # COMITATIVE case
-            "modifiers": {},  # Adjective-noun links
-            "distances": [],  # Measure phrases
-            "quantities": [],
-        }
         verb_idx = None
         for i, (word, pos) in enumerate(tagged_tokens):
             if pos == "VERB":
                 verb_idx = i
-                frame["action"] = word
+                self.frame["action"] = word
                 break
         # fallback to AUX
         if verb_idx is None:
             for i, (word, pos) in enumerate(tagged_tokens):
                 if pos == "AUX":
                     verb_idx = i
-                    frame["action"] = word
+                    self.frame["action"] = word
                     break
 
         if verb_idx is None:
-            return frame
+            return
 
         # After verb → other roles based on prepositions
         current_prep = None
@@ -891,13 +887,13 @@ class SentenceReadingAgent:
                 current_adj = word
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
-                    frame["times"].append(f"{prev_word} {word}")
+                    self.frame["times"].append(f"{prev_word} {word}")
                 else:
-                    frame["times"].append(word)
+                    self.frame["times"].append(word)
             elif pos in ["PROPN", "NOUN"]:
-                frame["agents"].append(word)
+                self.frame["agents"].append(word)
                 if current_adj:
-                    frame["modifiers"][word] = current_adj
+                    self.frame["modifiers"][word] = current_adj
                     current_adj = None
             prev_word = word
 
@@ -925,50 +921,50 @@ class SentenceReadingAgent:
 
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
-                    frame["times"].append(f"{prev_word} {word}")
+                    self.frame["times"].append(f"{prev_word} {word}")
                 else:
-                    frame["times"].append(word)
+                    self.frame["times"].append(word)
 
             elif pos in ["NOUN", "PROPN"]:
                 # Handle directions as locations
                 if word.lower() in self.DIRECTIONS and current_prep is None:
-                    frame["locations"].append(word)
+                    self.frame["locations"].append(word)
                     prev_word = word
                     continue
 
                 # Handle measure/quantity phrases like "3 feet" or "2 miles" or "a thousand dogs"
                 if current_num and word.lower() in self.DIST:
-                    frame["distances"].append(f"{current_num} {word}")
+                    self.frame["distances"].append(f"{current_num} {word}")
                     current_num = None
                     current_prep = None
                     continue
                 elif current_num:
-                    frame["quantities"].append(f"{current_num} {word}")
+                    self.frame["quantities"].append(f"{current_num} {word}")
 
                 # Assign role based on preposition
                 if current_prep is None:
-                    frame["objects"].append(word)
+                    self.frame["objects"].append(word)
                 elif current_prep == "to":
                     if pos == "PROPN":
-                        frame["recipients"].append(word)
+                        self.frame["recipients"].append(word)
                     else:
-                        frame["locations"].append(word)
+                        self.frame["locations"].append(word)
                 elif current_prep == "of":
-                    frame["objects"].append(word)
+                    self.frame["objects"].append(word)
                 elif current_prep in ["at", "in", "on", "from"]:
                     if current_prep == "on" and word.lower() in self.TIME_WORDS:
-                        frame["times"].append(word)
+                        self.frame["times"].append(word)
                     else:
-                        frame["locations"].append(word)
+                        self.frame["locations"].append(word)
                 elif current_prep == "with":
                     if pos == "PROPN":
-                        frame["companions"].append(word)
+                        self.frame["companions"].append(word)
                     else:
-                        frame["instruments"].append(word)
+                        self.frame["instruments"].append(word)
 
                 # Track adjective modifiers
                 if current_adj:
-                    frame["modifiers"][word] = current_adj
+                    self.frame["modifiers"][word] = current_adj
                     current_adj = None
 
                 current_prep = None
@@ -976,9 +972,8 @@ class SentenceReadingAgent:
             prev_word = word
 
             # Handle predicate adjectives: "The water is blue"
-            if current_adj and frame["agents"]:
-                frame["modifiers"][frame["agents"][-1]] = current_adj
-        return frame
+            if current_adj and self.frame["agents"]:
+                self.frame["modifiers"][self.frame["agents"][-1]] = current_adj
 
     def classify_question(self, question: str) -> str:
         """Classify the type of question.
@@ -1036,10 +1031,13 @@ class SentenceReadingAgent:
         if wh_word in {"who", "whom"} and last_token == "to":
             return "WHO_RECIPIENT"
 
-        # Rule 5: WHAT + is subject
-        if wh_word == "what" and "is" in tokens:
-            # Check if asking about subject
-            return "WHAT_SUBJECT"
+        # Rule 5: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
+        if wh_word == "what" and next_token == "is":
+            for token in tokens:
+                if token in self.frame["agents"] and len(self.frame["objects"] > 0):
+                    return "WHAT_OBJECT"
+                if token in self.frame["objects"] and len(self.frame["agents"] > 0):
+                    return "WHAT_AGENT"
 
         # Rule 6: HOW + movement verb
         if wh_word == "how":
@@ -1058,8 +1056,8 @@ class SentenceReadingAgent:
         tokens = self.tokenize(sentence)
         tagged_tokens = self.tag_tokens(tokens)
         print(f"tagged_tokens: {tagged_tokens}")
-        frame = self.get_frame_from_tagged_tokens(tagged_tokens)
-        print(f"frame: {frame}")
+        self.load_frame_from_tagged_tokens(tagged_tokens)
+        print(f"frame: {self.frame}")
         q_type = self.classify_question(question)
         print(f"q_type: {q_type}")
 
@@ -1070,54 +1068,55 @@ class SentenceReadingAgent:
         if q_type_parts[0] == "WHO":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "AGENT":
-                    if frame["agents"]:
-                        return frame["agents"][-1]
+                    if self.frame["agents"]:
+                        return self.frame["agents"][-1]
                 elif q_type_parts[1] == "RECIPIENT":
-                    if frame["recipients"]:
-                        return frame["recipients"][-1]
+                    if self.frame["recipients"]:
+                        return self.frame["recipients"][-1]
                 elif q_type_parts[1] == "WITH":
-                    for name in frame["agents"]:
+                    for name in self.frame["agents"]:
                         if name.lower() not in question.lower():
                             return name
-                    if frame["agents"]:
-                        return frame["agents"][0]
+                    if self.frame["agents"]:
+                        return self.frame["agents"][0]
                 # Fallback for existential sentences ("There are men")
-                if frame["objects"]:
-                    return frame["objects"][0]
+                if self.frame["objects"]:
+                    return self.frame["objects"][0]
                 # Fall back to AGENT
-                if frame["agents"]:
-                    return frame["agents"][0]
+                if self.frame["agents"]:
+                    return self.frame["agents"][0]
+
         # WHAT
         elif q_type_parts[0] == "WHAT":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "OBJECT":
-                    if frame["objects"]:
-                        return frame["objects"][-1]
-                    if frame["agents"]:
-                        return frame["agents"][-1]
+                    if self.frame["objects"]:
+                        return self.frame["objects"][-1]
+                    if self.frame["agents"]:
+                        return self.frame["agents"][-1]
                 elif q_type_parts[1] == "SUBJECT":
-                    return frame["agents"][-1]
+                    return self.frame["agents"][-1]
                 elif q_type_parts[1] in ["COLOR"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
-                        if token in frame["modifiers"]:
-                            return frame["modifiers"][token]
+                        if token in self.frame["modifiers"]:
+                            return self.frame["modifiers"][token]
                 elif q_type_parts[1] == "MODIFIER":
-                    if token in frame["modifiers"]:
+                    if token in self.frame["modifiers"]:
                         return token
 
         # WHEN
         elif q_type_parts[0] == "WHEN":
-            if frame["times"]:
+            if self.frame["times"]:
                 # Prefer numeric time (8:00AM) over word time
-                for t in frame["times"]:
+                for t in self.frame["times"]:
                     if self.TIME_PATTERN.match(t):
                         return t
-                return frame["times"][-1]
+                return self.frame["times"][-1]
         # WHERE
         elif q_type_parts[0] == "WHERE":
-            if frame["locations"]:
-                return frame["locations"][-1]
+            if self.frame["locations"]:
+                return self.frame["locations"][-1]
         # WHY
         elif q_type_parts[0] == "WHY":
             pass
@@ -1126,18 +1125,18 @@ class SentenceReadingAgent:
         elif q_type_parts[0] == "HOW":
             if len(q_type_parts) > 1:
                 if q_type_parts[1] == "METHOD":
-                    if frame["action"]:
-                        return frame["action"]
+                    if self.frame["action"]:
+                        return self.frame["action"]
                 elif q_type_parts[1] == "FAR":
-                    if frame["distances"]:
-                        return frame["distances"][-1]
+                    if self.frame["distances"]:
+                        return self.frame["distances"][-1]
                 elif q_type_parts[1] in ["LONG", "OLD"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
-                        if token in frame["modifiers"]:
-                            return frame["modifiers"][token]
+                        if token in self.frame["modifiers"]:
+                            return self.frame["modifiers"][token]
                 elif q_type_parts[1] == "QUANTITY":
-                    if frame["quantities"]:
-                        return frame["quantities"][0]
+                    if self.frame["quantities"]:
+                        return self.frame["quantities"][0]
 
         return ""
