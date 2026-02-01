@@ -107,6 +107,15 @@ S21 = "This year David will watch a play."
             "How many children are in this town?",
             "a thousand children",
         ),
+        ("Give us all your money.", "Who should you give your money to?", "us"),
+        ("She told her friend a story.", "Who was told a story?", "friend"),
+        ("Bring the letter to the other room.", "Where should the letter go?", "room"),
+        (
+            "The blue bird will sing in the morning.",
+            "When will the bird sing?",
+            "morning",
+        ),
+        ("She will write him a love letter.", "Who wrote a love letter?", "She"),
     ],
 )
 def test_solve(agent, sentence, question, expected):
