@@ -698,7 +698,41 @@ class SentenceReadingAgent:
             "billion",
         }
         self.QUANTS = {"all", "some", "every", "most", "few", "none"}
+        self.SUB_PRONOUNS = {"i", "he", "she", "we", "they"}
+        self.OBJ_PRONOUNS = {"me", "him", "her", "us", "them"}
         self.frame = None
+        # BEGIN CODE REFERENCED FROM https://www.aprendeinglesenleganes.com/resources/DITRANSITIVE%20VERBS%20(LIST)%20.pdf
+        self.DITRANSITIVE = {
+            "give",
+            "gave",
+            "given",
+            "tell",
+            "told",
+            "show",
+            "showed",
+            "shown",
+            "send",
+            "sent",
+            "bring",
+            "brought",
+            "write",
+            "wrote",
+            "written",
+            "teach",
+            "taught",
+            "read",
+            "hand",
+            "handed",
+            "pass",
+            "passed",
+            "sell",
+            "sold",
+            "lend",
+            "lent",
+            "offer",
+            "offered",
+        }
+        # END CODE REFERENCED FROM https://www.aprendeinglesenleganes.com/resources/DITRANSITIVE%20VERBS%20(LIST)%20.pdf
 
     def _create_frame(self):
         """Creates the frame to analyze the sentence."""
@@ -822,9 +856,7 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
@@ -867,6 +899,8 @@ class SentenceReadingAgent:
         current_num = None
 
         # Before verb → agents with modifiers
+
+        # BEFORE VERB LOOP
         prev_word = None
         prev_pos = None
         for word, pos in tagged_tokens[:verb_idx]:
@@ -877,6 +911,8 @@ class SentenceReadingAgent:
                     self.frame["times"].append(f"{prev_word} {word}")
                 else:
                     self.frame["times"].append(word)
+            elif pos == "PRON" and word.lower() in self.SUB_PRONOUNS:
+                self.frame["agents"].append(word)
             elif pos == "PROPN":
                 # Appositive pattern: [NOUN] [PROPN] → name
                 if prev_pos == "NOUN":
@@ -891,6 +927,7 @@ class SentenceReadingAgent:
             prev_word = word
             prev_pos = pos
 
+        # AFTER VERB LOOP
         prev_word = None
         for word, pos in tagged_tokens[verb_idx + 1 :]:
             # stop if the word is a clause marker.
@@ -912,8 +949,11 @@ class SentenceReadingAgent:
             elif pos == "DET":
                 prev_word = word
                 continue
-            elif pos == "PRON" and word.lower() in self.QUANTS:
-                self.frame["quantifiers"].append(word)
+            elif pos == "PRON":
+                if word.lower() in self.QUANTS:
+                    self.frame["quantifiers"].append(word)
+                if word.lower() in self.OBJ_PRONOUNS and current_adj is None:
+                    self.frame["recipients"].append(word)
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
                     self.frame["times"].append(f"{prev_word} {word}")
