@@ -734,6 +734,21 @@ class SentenceReadingAgent:
             "quantities": [],
         }
 
+    def _reset_frame(self):
+        self.frame = {
+            "agents": [],  # Fillmore's AGENT case
+            "action": None,  # The predicate/verb
+            "objects": [],  # PATIENT/THEME case
+            "recipients": [],  # RECIPIENT/GOAL case
+            "locations": [],  # LOCATION case
+            "times": [],  # TEMPORAL adjunct
+            "instruments": [],  # INSTRUMENT case
+            "companions": [],  # COMITATIVE case
+            "modifiers": {},  # Adjective-noun links
+            "distances": [],  # Measure phrases
+            "quantities": [],
+        }
+
     def _is_hyphenated_number(self, word: str) -> bool:
         """Check if word is a hyphenated number like twenty-one or thirty-two."""
         parts = word.lower().split("-")
@@ -838,7 +853,9 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
@@ -971,9 +988,9 @@ class SentenceReadingAgent:
 
             prev_word = word
 
-            # Handle predicate adjectives: "The water is blue"
-            if current_adj and self.frame["agents"]:
-                self.frame["modifiers"][self.frame["agents"][-1]] = current_adj
+        # Handle predicate adjectives: "The water is blue"
+        if current_adj and self.frame["agents"]:
+            self.frame["modifiers"][self.frame["agents"][-1]] = current_adj
 
     def classify_question(self, question: str) -> str:
         """Classify the type of question.
@@ -1033,10 +1050,13 @@ class SentenceReadingAgent:
 
         # Rule 5: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
         if wh_word == "what" and next_token == "is":
-            for token in tokens:
-                if token in self.frame["agents"] and len(self.frame["objects"] > 0):
+            for token in tokens[::-1]:
+                for sub, attrib in self.frame["modifiers"].items():
+                    if token == attrib:
+                        return "WHAT_ATTRIB"
+                if token in self.frame["agents"] and len(self.frame["objects"]) > 0:
                     return "WHAT_OBJECT"
-                if token in self.frame["objects"] and len(self.frame["agents"] > 0):
+                if token in self.frame["objects"] and len(self.frame["agents"]) > 0:
                     return "WHAT_AGENT"
 
         # Rule 6: HOW + movement verb
@@ -1056,6 +1076,7 @@ class SentenceReadingAgent:
         tokens = self.tokenize(sentence)
         tagged_tokens = self.tag_tokens(tokens)
         print(f"tagged_tokens: {tagged_tokens}")
+        self._reset_frame()
         self.load_frame_from_tagged_tokens(tagged_tokens)
         print(f"frame: {self.frame}")
         q_type = self.classify_question(question)
@@ -1089,10 +1110,15 @@ class SentenceReadingAgent:
         # WHAT
         elif q_type_parts[0] == "WHAT":
             if len(q_type_parts) > 1:
-                if q_type_parts[1] == "OBJECT":
+                if q_type_parts[1] == "AGENT":
+                    if self.frame["agents"]:
+                        return self.frame["agents"][-1]
+                    elif self.frame["objects"]:
+                        return self.frame["objects"][-1]
+                elif q_type_parts[1] == "OBJECT":
                     if self.frame["objects"]:
                         return self.frame["objects"][-1]
-                    if self.frame["agents"]:
+                    elif self.frame["agents"]:
                         return self.frame["agents"][-1]
                 elif q_type_parts[1] == "SUBJECT":
                     return self.frame["agents"][-1]
@@ -1104,6 +1130,13 @@ class SentenceReadingAgent:
                 elif q_type_parts[1] == "MODIFIER":
                     if token in self.frame["modifiers"]:
                         return token
+                elif q_type_parts[1] == "ATTRIB":
+                    q_tokens = self.tokenize(question)
+                    for adj in q_tokens:
+                        if adj in self.frame["modifiers"].values():
+                            for noun, modifier in self.frame["modifiers"].items():
+                                if modifier == adj:
+                                    return noun
 
         # WHEN
         elif q_type_parts[0] == "WHEN":
@@ -1113,6 +1146,7 @@ class SentenceReadingAgent:
                     if self.TIME_PATTERN.match(t):
                         return t
                 return self.frame["times"][-1]
+
         # WHERE
         elif q_type_parts[0] == "WHERE":
             if self.frame["locations"]:
