@@ -784,16 +784,12 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(
-        self, tagged_tokens: list[tuple[str, str]]
-    ) -> dict:
+    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -867,7 +863,7 @@ class SentenceReadingAgent:
                 break
 
             if pos == "NUM":
-                if prev_word == "a":
+                if prev_word == "a" or self.WORD_DATA[word]["pos"] == "NUM":
                     current_num = f"{prev_word} {word}"
                 else:
                     current_num = word
@@ -892,7 +888,7 @@ class SentenceReadingAgent:
                     prev_word = word
                     continue
 
-                # Handle measure phrases like "3 feet" or "2 miles" or quantity
+                # Handle measure/quantity phrases like "3 feet" or "2 miles" or "a thousand dogs"
                 if current_num and word.lower() in self.DIST:
                     frame["distances"].append(f"{current_num} {word}")
                     current_num = None
