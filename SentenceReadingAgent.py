@@ -697,6 +697,7 @@ class SentenceReadingAgent:
             "million",
             "billion",
         }
+        self.QUANTS = {"all", "some", "every", "most", "few", "none"}
         self.frame = None
 
     def _create_frame(self):
@@ -713,7 +714,8 @@ class SentenceReadingAgent:
             "companions": [],  # COMITATIVE case
             "modifiers": {},  # Adjective-noun links
             "distances": [],  # Measure phrases
-            "quantities": [],
+            "quantities": [],  # numers like two dogs, three amigos, a doughnut, etc.
+            "quantifiers": [],  # All, some, etc.
         }
 
     def _is_hyphenated_number(self, word: str) -> bool:
@@ -908,7 +910,8 @@ class SentenceReadingAgent:
             elif pos == "DET":
                 prev_word = word
                 continue
-
+            elif pos == "PRON" and word.lower() in self.QUANTS:
+                self.frame["quantifiers"].append(word)
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
                     self.frame["times"].append(f"{prev_word} {word}")
@@ -1187,5 +1190,7 @@ class SentenceReadingAgent:
                 elif q_type_parts[1] == "QUANTITY":
                     if self.frame["quantities"]:
                         return self.frame["quantities"][0]
+                    if self.frame["quantifiers"]:
+                        return self.frame["quantifiers"][0]
 
         return ""
