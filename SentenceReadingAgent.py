@@ -822,7 +822,9 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
@@ -1029,12 +1031,21 @@ class SentenceReadingAgent:
                 return "WHAT_NAME"
             elif next_token == "time":
                 return "WHEN"
-            # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
-            elif be_words & set(tokens):
-                if next_token in be_words:
-                    return "WHAT_MODIFIER_NOUN"
-                else:
-                    return "WHAT_MODIFIER_ADJ"
+            # RULE: "What is [predicate]?""
+            elif next_token in be_words:
+                return "WHAT_MODIFIER_NOUN"
+            # RULE: if the next token is a noun classifier.
+            elif next_token in {
+                "color",
+                "animal",
+                "size",
+                "kind",
+                "type",
+                "shape",
+                "brand",
+                "style",
+            }:
+                return "WHAT_MODIFIER_ADJ"
             else:
                 return "WHAT_OBJECT"
         # RULE: WHEN
