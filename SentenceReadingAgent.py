@@ -662,21 +662,7 @@ class SentenceReadingAgent:
             "second",
         }
         self.CLAUSE_MARKERS = {"when", "while", "if", "because", "although", "unless"}
-        self.W_WORDS = {"who", "whom", "what", "where", "when", "why", "how"}
         self.W_MOVEMENT = {"get", "go", "travel", "arrive", "walk", "drive", "come"}
-        self.W_BASE = {
-            "who": "WHO_AGENT",
-            "whom": "WHO_AGENT",
-            "what": "WHAT_OBJECT",
-            "where": "WHERE",
-            "when": "WHEN",
-            "why": "WHY",
-            "how": "HOW",
-            "color": "WHAT_COLOR",
-            "long": "HOW_LONG",
-            "far": "HOW_FAR",
-            "old": "HOW_OLD",
-        }
         self.DIRECTIONS = {"east", "west", "north", "south"}
         self.NUM_WORDS = {
             "one",
@@ -834,7 +820,9 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
@@ -999,7 +987,7 @@ class SentenceReadingAgent:
 
         # Step 1: Tokenize the question.
         for i, tok in enumerate(tokens):
-            if tok in self.W_WORDS:
+            if tok in {"who", "whom", "what", "where", "when", "why", "how"}:
                 wh_idx = i
                 wh_word = tok
                 break
@@ -1022,15 +1010,17 @@ class SentenceReadingAgent:
                 return "WITH_WHAT"
         if prev_token == "to":
             return "WHO_RECIPIENT"
-
+        # RULE: WHO
         if wh_word in {"who", "whom"}:
             # RULE: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
             if "with" in tokens:
                 return "WHO_WITH"
             # RULE: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
-            if last_token == "to":
+            elif last_token == "to":
                 return "WHO_RECIPIENT"
-
+            else:
+                return "WHO_AGENT"
+        # RULE: WHAT
         if wh_word == "what":
             if "name" in tokens:
                 return "WHAT_NAME"
@@ -1042,10 +1032,14 @@ class SentenceReadingAgent:
                     return "WHAT_MODIFIER_NOUN"
                 else:
                     return "WHAT_MODIFIER_ADJ"
+            return "WHAT_OBJECT"
+        # RULE: WHEN
         if wh_word == "when":
             return "WHEN"
-
-        # RULE: HOW + movement verb
+        # RULE: WHERE
+        if wh_word == "where":
+            return "WHERE"
+        # RULE: HOW
         if wh_word == "how":
             if next_token in ["many", "much"]:
                 return "HOW_QUANTITY"
@@ -1054,12 +1048,15 @@ class SentenceReadingAgent:
             if next_token == "long":
                 return "HOW_LONG"
             if next_token == "often":
-                return ("HOW_FREQUENCY",)
+                return "HOW_FREQUENCY"
+            if next_token == "old":
+                return "HOW_OLD"
             if self.W_MOVEMENT & set(tokens):
                 return "HOW_METHOD"
-
-        # RULE: Base WH-word (fallback)
-        return self.W_BASE.get(wh_word, "UNKNOWN")
+            return "HOW"
+        # RULE: WHY
+        if wh_word == "why":
+            return "WHY"
 
     def solve(self, sentence: str, question: str) -> str:
         """Answer the question based on the given sentence.
