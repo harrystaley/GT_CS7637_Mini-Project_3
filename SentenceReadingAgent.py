@@ -711,22 +711,12 @@ class SentenceReadingAgent:
             "million",
             "billion",
         }
-        self.frame = {
-            "agents": [],  # Fillmore's AGENT case
-            "action": None,  # The predicate/verb
-            "objects": [],  # PATIENT/THEME case
-            "recipients": [],  # RECIPIENT/GOAL case
-            "locations": [],  # LOCATION case
-            "times": [],  # TEMPORAL adjunct
-            "instruments": [],  # INSTRUMENT case
-            "companions": [],  # COMITATIVE case
-            "modifiers": {},  # Adjective-noun links
-            "distances": [],  # Measure phrases
-            "quantities": [],
-        }
+        self.frame = None
 
-    def _reset_frame(self):
+    def _create_frame(self):
+        """Creates the frame to analyze the sentence."""
         self.frame = {
+            "names": {},  # noun to proper noun relationship appositives like "dog Red"
             "agents": [],  # Fillmore's AGENT case
             "action": None,  # The predicate/verb
             "objects": [],  # PATIENT/THEME case
@@ -888,6 +878,7 @@ class SentenceReadingAgent:
 
         # Before verb → agents with modifiers
         prev_word = None
+        prev_pos = None
         for word, pos in tagged_tokens[:verb_idx]:
             if pos == "ADJ":
                 current_adj = word
@@ -896,12 +887,19 @@ class SentenceReadingAgent:
                     self.frame["times"].append(f"{prev_word} {word}")
                 else:
                     self.frame["times"].append(word)
-            elif pos in ["PROPN", "NOUN"]:
+            elif pos == "PROPN":
+                # Appositive pattern: [NOUN] [PROPN] → name
+                if prev_pos == "NOUN":
+                    self.frame["names"][prev_word] = word
+                else:
+                    self.frame["agents"].append(word)
+            elif pos == "NOUN":
                 self.frame["agents"].append(word)
                 if current_adj:
                     self.frame["modifiers"][word] = current_adj
                     current_adj = None
             prev_word = word
+            prev_pos = pos
 
         prev_word = None
         for word, pos in tagged_tokens[verb_idx + 1 :]:
@@ -1034,6 +1032,8 @@ class SentenceReadingAgent:
                 return "WHO_RECIPIENT"
 
         if wh_word == "what":
+            if "name" in tokens:
+                return "WHAT_NAME"
             if next_token == "time":
                 return "WHEN"
             # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
@@ -1058,7 +1058,7 @@ class SentenceReadingAgent:
             if next_token == "often":
                 return ("HOW_FREQUENCY",)
 
-        # Rule 7: Base WH-word (fallback)
+        # RULE: Base WH-word (fallback)
         return self.W_BASE.get(wh_word, "UNKNOWN")
 
     def solve(self, sentence: str, question: str) -> str:
@@ -1070,7 +1070,7 @@ class SentenceReadingAgent:
         tokens = self.tokenize(sentence)
         tagged_tokens = self.tag_tokens(tokens)
         print(f"tagged_tokens: {tagged_tokens}")
-        self._reset_frame()
+        self._create_frame()
         self.load_frame_from_tagged_tokens(tagged_tokens)
         print(f"frame: {self.frame}")
         q_type = self.classify_question(question)
@@ -1104,6 +1104,12 @@ class SentenceReadingAgent:
         # WHAT
         elif q_type_parts[0] == "WHAT":
             if len(q_type_parts) > 1:
+                if q_type_parts[1] == "NAME":
+                    agent = self.frame["agents"][-1]
+                    if agent in self.frame["names"]:
+                        return self.frame["names"][agent]
+                    else:
+                        return agent
                 if q_type_parts[1] == "AGENT":
                     if self.frame["agents"]:
                         return self.frame["agents"][-1]
