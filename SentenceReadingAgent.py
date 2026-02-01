@@ -1027,7 +1027,7 @@ class SentenceReadingAgent:
 
         # Step 3: classify the question based upon the rules.
 
-        # Rule 1: PREP + WH (e.g., "with whom", "at what time", "who is blue")
+        # RULE: PREP + WH (e.g., "with whom", "at what time", "who is blue")
         if prev_token == "with":
             if wh_word in {"who", "whom"}:
                 return "WHO_WITH"
@@ -1036,33 +1036,29 @@ class SentenceReadingAgent:
         if prev_token == "to":
             return "WHO_RECIPIENT"
 
-        # Rule 2: WH + MODIFIER (e.g., "how far", "what time")
-        if next_token in self.W_MODIFIERS:
-            return self.W_MODIFIERS[next_token]
-
-        # Rule 3: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
+        # RULE: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
         if wh_word in {"who", "whom"} and "with" in tokens:
             return "WHO_WITH"
 
-        # Rule 4: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
+        # RULE: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
         if wh_word in {"who", "whom"} and last_token == "to":
             return "WHO_RECIPIENT"
 
-        # Rule 5: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
-        if wh_word == "what" and next_token == "is":
-            for token in tokens[::-1]:
-                for sub, attrib in self.frame["modifiers"].items():
-                    if token == attrib:
-                        return "WHAT_ATTRIB"
-                if token in self.frame["agents"] and len(self.frame["objects"]) > 0:
-                    return "WHAT_OBJECT"
-                if token in self.frame["objects"] and len(self.frame["agents"]) > 0:
-                    return "WHAT_AGENT"
+        # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
+        if wh_word == "what" and "is" in tokens:
+            if next_token == "is":
+                return "WHAT_MODIFIER_NOUN"
+            else:
+                return "WHAT_MODIFIER_ADJ"
 
-        # Rule 6: HOW + movement verb
+        # RULE: HOW + movement verb
         if wh_word == "how":
             if self.W_MOVEMENT & set(tokens):
                 return "HOW_METHOD"
+
+        # RULE: WH + MODIFIER (e.g., "how far", "what time")
+        if next_token in self.W_MODIFIERS:
+            return self.W_MODIFIERS[next_token]
 
         # Rule 7: Base WH-word (fallback)
         return self.W_BASE.get(wh_word, "UNKNOWN")
@@ -1120,6 +1116,11 @@ class SentenceReadingAgent:
                         return self.frame["objects"][-1]
                     elif self.frame["agents"]:
                         return self.frame["agents"][-1]
+                    else:
+                        # Fallback: look for predicate adjective
+                        for word, pos in reversed(tagged_tokens):
+                            if pos == "ADJ":
+                                return word
                 elif q_type_parts[1] == "SUBJECT":
                     return self.frame["agents"][-1]
                 elif q_type_parts[1] in ["COLOR"]:
@@ -1127,18 +1128,22 @@ class SentenceReadingAgent:
                     for token in q_tokens:
                         if token in self.frame["modifiers"]:
                             return self.frame["modifiers"][token]
-                elif q_type_parts[1] == "MODIFIER":
-                    if token in self.frame["modifiers"]:
-                        return token
-                elif q_type_parts[1] == "ATTRIB":
-                    q_tokens = self.tokenize(question)
-                    for adj in q_tokens:
-                        if adj in self.frame["modifiers"].values():
-                            for noun, modifier in self.frame["modifiers"].items():
-                                if modifier == adj:
-                                    return noun
 
-        # WHEN
+                elif q_type_parts[1] == "MODIFIER":
+                    if q_type_parts[2] == "NOUN":
+                        # "What is X?" → return the agent/subject
+                        if self.frame["agents"]:
+                            return self.frame["agents"][-1]
+                    elif q_type_parts[2] == "ADJ":
+                        # "What X is Y?" → find noun with modifier Y
+                        q_tokens = self.tokenize(question)
+                        for adj in q_tokens:
+                            if adj in self.frame["modifiers"].values():
+                                for noun, modifier in self.frame["modifiers"].items():
+                                    if modifier == adj:
+                                        return noun
+
+            # WHEN
         elif q_type_parts[0] == "WHEN":
             if self.frame["times"]:
                 # Prefer numeric time (8:00AM) over word time
