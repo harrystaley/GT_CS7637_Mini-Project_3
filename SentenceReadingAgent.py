@@ -687,6 +687,44 @@ class SentenceReadingAgent:
             "old": "HOW_OLD",
         }
         self.DIRECTIONS = {"east", "west", "north", "south"}
+        self.NUM_WORDS = {
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen",
+            "seventeen",
+            "eighteen",
+            "nineteen",
+            "twenty",
+            "thirty",
+            "forty",
+            "fifty",
+            "sixty",
+            "seventy",
+            "eighty",
+            "ninety",
+            "hundred",
+            "thousand",
+            "million",
+            "billion",
+        }
+
+    def _is_hyphenated_number(self, word: str) -> bool:
+        """Check if word is a hyphenated number like twenty-one or thirty-two."""
+        parts = word.lower().split("-")
+        return len(parts) == 2 and all(p in self.NUM_WORDS for p in parts)
 
     def tokenize(self, text: str) -> list:
         """Tokenize the sentence returning a list of the tokens.
@@ -754,6 +792,9 @@ class SentenceReadingAgent:
                 return pos  # "the best" → stays ADJ
             return "NOUN"
 
+        elif self._is_hyphenated_number(word_lower):
+            return "NUM"
+
         elif word_lower in self.WORD_DATA:
             return self.WORD_DATA[word_lower]["pos"]
 
@@ -784,12 +825,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -863,8 +908,11 @@ class SentenceReadingAgent:
                 break
 
             if pos == "NUM":
-                if prev_word == "a" or self.WORD_DATA[word]["pos"] == "NUM":
+                if prev_word and prev_word.lower() in {"a", "an"}:
                     current_num = f"{prev_word} {word}"
+                # handle for non hyphenated compound numbers.
+                elif current_num:
+                    current_num = f"{current_num} {word}"
                 else:
                     current_num = word
             elif pos == "ADP":
@@ -1073,6 +1121,7 @@ class SentenceReadingAgent:
         # WHY
         elif q_type_parts[0] == "WHY":
             pass
+
         # HOW
         elif q_type_parts[0] == "HOW":
             if len(q_type_parts) > 1:
