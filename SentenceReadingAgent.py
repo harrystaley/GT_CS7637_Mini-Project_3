@@ -2,28 +2,31 @@
 A semantic frame-based question answering agent that extracts thematic roles
 from sentences and answers WH-questions by querying the appropriate frame slots.
 
-References:
 
-    Jurafsky, D., & Martin, J. H. (2009). Speech and Language Processing (2nd ed.).
-    Pearson Prentice Hall.
+Approach:
+    This agent uses a simplified semantic role labeling pipeline inspired by
+    concepts from Jurafsky & Martin's "Speech and Language Processing":
+    - Tokenization and POS tagging (Ch. 2, 8)
+    - Semantic role labeling and frame semantics (Ch. 19-21)
+    - Question classification and answering (Ch. 23)
 
-    Key chapters:
-    - Ch. 3: Words and Transducers, pp. 57-90 (tokenization)
-    - Ch. 5: Part-of-Speech Tagging, pp. 123-164
-    - Ch. 19: Lexical Semantics, pp. 617-656 (thematic roles)
-    - Ch. 20: Computational Lexical Semantics, pp. 657-700 (semantic role labeling)
-    - Ch. 23: Question Answering and Summarization, pp. 767-812 (answer type detection)
+External Resources:
+    - Ditransitive verb list adapted from:
+        https://www.aprendeinglesenleganes.com/resources/DITRANSITIVE%20VERBS%20(LIST)%20.pdf
+    - POS tagging concepts informed by:
+        Bird, S., Klein, E., & Loper, E. (2009). Natural Language Processing with Python.
+        https://www.nltk.org/book/
+    - Linguistic feature definitions referenced from:
+        spaCy Documentation. https://spacy.io/usage/linguistic-features
+    - Jurafsky, D., & Martin, J. H. (2024). Speech and Language Processing (3rd ed.).
+        https://web.stanford.edu/~jurafsky/slp3/
 
-    Jurafsky, D., & Martin, J. H. (2026). Speech and Language Processing (3rd ed.).
-    Online manuscript. https://web.stanford.edu/~jurafsky/slp3/
-
-    Key chapters:
-    - Ch. 2: Words and Tokens
-      https://web.stanford.edu/~jurafsky/slp3/2.pdf
-    - Ch. 17: Sequence Labeling for POS and Named Entities
-      https://web.stanford.edu/~jurafsky/slp3/17.pdf
-    - Ch. 21: Semantic Role Labeling and Argument Structure
-      https://web.stanford.edu/~jurafsky/slp3/21.pdf
+Disclosure of AI assistance:
+    Claude (Anthropic) was consulted during development for the following reasons:
+    1. Debugging - finding logical mistakes with frame extraction and question answering process
+    2. Understanding Concepts - understanding Semantic Role Labeling
+    3. Locating Sources - locating linguistic sources for ditransitive verbs and other foundational learning resources
+    Code was authored by myself.
 """
 
 import re
@@ -799,7 +802,7 @@ class SentenceReadingAgent:
         if word_lower == "to":
             if next_word:
                 next_data = self.WORD_DATA.get(next_word, None)
-                if "pos" in next_data and next_data.get("pos") == "VERB":
+                if next_data and next_data.get("pos") == "VERB":
                     return "PART"
                 else:
                     return "ADP"
@@ -1050,7 +1053,7 @@ class SentenceReadingAgent:
 
         # Step 3: classify the question based upon the rules.
 
-        # RULE: PREP + WH (e.g., "with whom", "at what time", "who is blue")
+        # RULE: PREP + WH (e.g., "with whom", "at what time, to whom")
         if prev_token == "with":
             if wh_word in {"who", "whom"}:
                 return "WHO_WITH"
@@ -1228,6 +1231,7 @@ class SentenceReadingAgent:
         elif q_type_parts[0] == "WHERE":
             if self.frame["locations"]:
                 return self.frame["locations"][-1]
+
         # WHY
         elif q_type_parts[0] == "WHY":
             pass
