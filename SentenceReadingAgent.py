@@ -663,15 +663,6 @@ class SentenceReadingAgent:
         }
         self.CLAUSE_MARKERS = {"when", "while", "if", "because", "although", "unless"}
         self.W_WORDS = {"who", "whom", "what", "where", "when", "why", "how"}
-        self.W_MODIFIERS = {
-            "time": "WHEN",
-            "far": "HOW_FAR",
-            "long": "HOW_LONG",
-            "many": "HOW_QUANTITY",
-            "much": "HOW_QUANTITY",
-            "color": "WHAT_COLOR",
-            "often": "HOW_FREQUENCY",
-        }
         self.W_MOVEMENT = {"get", "go", "travel", "arrive", "walk", "drive", "come"}
         self.W_BASE = {
             "who": "WHO_AGENT",
@@ -787,14 +778,8 @@ class SentenceReadingAgent:
                 https://web.stanford.edu/~jurafsky/slp3/17.pdf
         """
         word_lower = word.lower()
-        # Check known words first
-        if word_lower in self.NAMES:
-            return "PROPN"
-        elif prev_word is not None and word[0].isupper():
-            # Capitalized mid-sentence words as the are likely proper noun
-            return "PROPN"
         # handle ambigour 'to' position.
-        elif word_lower == "to":
+        if word_lower == "to":
             if next_word:
                 next_data = self.WORD_DATA.get(next_word, None)
                 if "pos" in next_data and next_data.get("pos") == "VERB":
@@ -805,6 +790,13 @@ class SentenceReadingAgent:
 
         elif self.TIME_PATTERN.match(word) or word_lower in self.TIME_WORDS:
             return "TIME"
+
+        # Check known words first
+        elif word_lower in self.NAMES:
+            return "PROPN"
+        elif prev_word is not None and word[0].isupper():
+            # Capitalized mid-sentence words as the are likely proper noun
+            return "PROPN"
 
         # Infer from context: article/adjective usually precedes noun
         elif prev_word and prev_word.lower() in {
@@ -852,9 +844,7 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
@@ -1035,29 +1025,38 @@ class SentenceReadingAgent:
         if prev_token == "to":
             return "WHO_RECIPIENT"
 
-        # RULE: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
-        if wh_word in {"who", "whom"} and "with" in tokens:
-            return "WHO_WITH"
+        if wh_word in {"who", "whom"}:
+            # RULE: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
+            if "with" in tokens:
+                return "WHO_WITH"
+            # RULE: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
+            if last_token == "to":
+                return "WHO_RECIPIENT"
 
-        # RULE: WHO + trailing TO (e.g., "Who did Ada bring the note to?")
-        if wh_word in {"who", "whom"} and last_token == "to":
-            return "WHO_RECIPIENT"
-
-        # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
-        if wh_word == "what" and "is" in tokens:
-            if next_token == "is":
-                return "WHAT_MODIFIER_NOUN"
-            else:
-                return "WHAT_MODIFIER_ADJ"
+        if wh_word == "what":
+            if next_token == "time":
+                return "WHEN"
+            # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
+            elif "is" in tokens:
+                if next_token == "is":
+                    return "WHAT_MODIFIER_NOUN"
+                else:
+                    return "WHAT_MODIFIER_ADJ"
+        if wh_word == "when":
+            return "WHEN"
 
         # RULE: HOW + movement verb
         if wh_word == "how":
             if self.W_MOVEMENT & set(tokens):
                 return "HOW_METHOD"
-
-        # RULE: WH + MODIFIER (e.g., "how far", "what time")
-        if next_token in self.W_MODIFIERS:
-            return self.W_MODIFIERS[next_token]
+            if next_token in ["many", "much"]:
+                return "HOW_QUANTITY"
+            if next_token == "far":
+                return "HOW_FAR"
+            if next_token == "long":
+                return "HOW_LONG"
+            if next_token == "often":
+                return ("HOW_FREQUENCY",)
 
         # Rule 7: Base WH-word (fallback)
         return self.W_BASE.get(wh_word, "UNKNOWN")
