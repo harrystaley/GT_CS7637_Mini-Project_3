@@ -699,7 +699,12 @@ class SentenceReadingAgent:
         }
         self.QUANTS = {"all", "some", "every", "most", "few", "none"}
         self.SUB_PRONOUNS = {"i", "he", "she", "we", "they"}
-        self.OBJ_PRONOUNS = {"me", "him", "her", "us", "them"}
+        self.OBJ_PRONOUNS = {
+            "me",
+            "him",
+            "us",
+            "them",
+        }  # removed her because it is also posessive :(
         self.frame = None
         # BEGIN CODE REFERENCED FROM https://www.aprendeinglesenleganes.com/resources/DITRANSITIVE%20VERBS%20(LIST)%20.pdf
         self.DITRANSITIVE = {
@@ -952,7 +957,7 @@ class SentenceReadingAgent:
             elif pos == "PRON":
                 if word.lower() in self.QUANTS:
                     self.frame["quantifiers"].append(word)
-                if word.lower() in self.OBJ_PRONOUNS and current_adj is None:
+                if word.lower() in self.OBJ_PRONOUNS:
                     self.frame["recipients"].append(word)
             elif pos == "TIME":
                 if prev_word and prev_word.lower() in self.TIME_MARKERS:
@@ -1055,6 +1060,9 @@ class SentenceReadingAgent:
             return "WHO_RECIPIENT"
         # RULE: WHO
         if wh_word in {"who", "whom"}:
+            # RULE: ditransitive: "Who was told/given/shown...?"
+            if ("was" in tokens or "were" in tokens) and (self.DITRANSITIVE & set(tokens)):
+                return "WHO_RECIPIENT"
             # RULE: WHO + WITH anywhere (e.g., "Who does Lucy go with?")
             if "with" in tokens:
                 return "WHO_WITH"
