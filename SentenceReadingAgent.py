@@ -790,7 +790,9 @@ class SentenceReadingAgent:
         # Check known words first
         if word_lower in self.NAMES:
             return "PROPN"
-
+        elif prev_word is not None and word[0].isupper():
+            # Capitalized mid-sentence words as the are likely proper noun
+            return "PROPN"
         # handle ambigour 'to' position.
         elif word_lower == "to":
             if next_word:
@@ -834,9 +836,6 @@ class SentenceReadingAgent:
         elif word_lower.endswith(("ed", "ing")) and len(word_lower) > 4:
             return "VERB"
 
-        # Capitalized mid-sentence = likely proper noun
-        elif word[0].isupper():
-            return "PROPN"
         else:
             return "NOUN"  # Default guess: noun (most common for unknowns)
 
