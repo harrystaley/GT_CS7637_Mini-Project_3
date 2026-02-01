@@ -820,9 +820,7 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(
-                            word=token, prev_word=prev_token, next_word=next_token
-                        ),
+                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
                     )
                 )
         return tagged_tokens
@@ -1022,17 +1020,20 @@ class SentenceReadingAgent:
                 return "WHO_AGENT"
         # RULE: WHAT
         if wh_word == "what":
+            be_words = {"is", "was", "are", "were", "be", "been"}
+
             if "name" in tokens:
                 return "WHAT_NAME"
-            if next_token == "time":
+            elif next_token == "time":
                 return "WHEN"
             # RULE: "What is [predicate]?" - asking for subject ex. "What is _ made of?"
-            elif "is" in tokens:
-                if next_token == "is":
+            elif be_words & set(tokens):
+                if next_token in be_words:
                     return "WHAT_MODIFIER_NOUN"
                 else:
                     return "WHAT_MODIFIER_ADJ"
-            return "WHAT_OBJECT"
+            else:
+                return "WHAT_OBJECT"
         # RULE: WHEN
         if wh_word == "when":
             return "WHEN"
@@ -1043,17 +1044,18 @@ class SentenceReadingAgent:
         if wh_word == "how":
             if next_token in ["many", "much"]:
                 return "HOW_QUANTITY"
-            if next_token == "far":
+            elif next_token == "far":
                 return "HOW_FAR"
-            if next_token == "long":
+            elif next_token == "long":
                 return "HOW_LONG"
-            if next_token == "often":
+            elif next_token == "often":
                 return "HOW_FREQUENCY"
-            if next_token == "old":
+            elif next_token == "old":
                 return "HOW_OLD"
-            if self.W_MOVEMENT & set(tokens):
+            elif self.W_MOVEMENT & set(tokens):
                 return "HOW_METHOD"
-            return "HOW"
+            else:
+                return "HOW"
         # RULE: WHY
         if wh_word == "why":
             return "WHY"
