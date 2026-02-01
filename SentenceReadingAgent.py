@@ -704,7 +704,7 @@ class SentenceReadingAgent:
             "him",
             "us",
             "them",
-        }  # removed her because it is also posessive :(
+        }  # removed 'her' because it is also posessive :(
         self.frame = None
         # BEGIN CODE REFERENCED FROM https://www.aprendeinglesenleganes.com/resources/DITRANSITIVE%20VERBS%20(LIST)%20.pdf
         self.DITRANSITIVE = {
