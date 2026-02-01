@@ -784,12 +784,16 @@ class SentenceReadingAgent:
                 tagged_tokens.append(
                     (
                         token,
-                        self.get_pos(word=token, prev_word=prev_token, next_word=next_token),
+                        self.get_pos(
+                            word=token, prev_word=prev_token, next_word=next_token
+                        ),
                     )
                 )
         return tagged_tokens
 
-    def get_frame_from_tagged_tokens(self, tagged_tokens: list[tuple[str, str]]) -> dict:
+    def get_frame_from_tagged_tokens(
+        self, tagged_tokens: list[tuple[str, str]]
+    ) -> dict:
         """Extract a sentence frame from tagged tokens.
 
         Args:
@@ -863,7 +867,10 @@ class SentenceReadingAgent:
                 break
 
             if pos == "NUM":
-                current_num = word
+                if prev_word == "a":
+                    current_num = f"{prev_word} {word}"
+                else:
+                    current_num = word
             elif pos == "ADP":
                 current_prep = word.lower()
             elif pos == "ADJ":
@@ -964,7 +971,7 @@ class SentenceReadingAgent:
 
         # Step 3: classify the question based upon the rules.
 
-        # Rule 1: PREP + WH (e.g., "with whom", "at what time")
+        # Rule 1: PREP + WH (e.g., "with whom", "at what time", "who is blue")
         if prev_token == "with":
             if wh_word in {"who", "whom"}:
                 return "WHO_WITH"
@@ -985,12 +992,17 @@ class SentenceReadingAgent:
         if wh_word in {"who", "whom"} and last_token == "to":
             return "WHO_RECIPIENT"
 
-        # Rule 5: HOW + movement verb
+        # Rule 5: WHAT + is subject
+        if wh_word == "what" and "is" in tokens:
+            # Check if asking about subject
+            return "WHAT_SUBJECT"
+
+        # Rule 6: HOW + movement verb
         if wh_word == "how":
             if self.W_MOVEMENT & set(tokens):
                 return "HOW_METHOD"
 
-        # Rule 6: Base WH-word (fallback)
+        # Rule 7: Base WH-word (fallback)
         return self.W_BASE.get(wh_word, "UNKNOWN")
 
     def solve(self, sentence: str, question: str) -> str:
@@ -1039,11 +1051,16 @@ class SentenceReadingAgent:
                         return frame["objects"][-1]
                     if frame["agents"]:
                         return frame["agents"][-1]
+                elif q_type_parts[1] == "SUBJECT":
+                    return frame["agents"][-1]
                 elif q_type_parts[1] in ["COLOR"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
                         if token in frame["modifiers"]:
                             return frame["modifiers"][token]
+                elif q_type_parts[1] == "MODIFIER":
+                    if token in frame["modifiers"]:
+                        return token
 
         # WHEN
         elif q_type_parts[0] == "WHEN":
@@ -1069,9 +1086,6 @@ class SentenceReadingAgent:
                 elif q_type_parts[1] == "FAR":
                     if frame["distances"]:
                         return frame["distances"][-1]
-                elif q_type_parts[1] == "MANY":
-                    if frame["quantities"]:
-                        return frame["quantities"][-1]
                 elif q_type_parts[1] in ["LONG", "OLD"]:
                     q_tokens = self.tokenize(question)
                     for token in q_tokens:
@@ -1079,6 +1093,6 @@ class SentenceReadingAgent:
                             return frame["modifiers"][token]
                 elif q_type_parts[1] == "QUANTITY":
                     if frame["quantities"]:
-                        return frame["quantities"][-1]
+                        return frame["quantities"][0]
 
         return ""
