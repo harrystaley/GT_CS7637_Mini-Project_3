@@ -116,6 +116,30 @@ S21 = "This year David will watch a play."
             "morning",
         ),
         ("She will write him a love letter.", "Who wrote a love letter?", "She"),
+        ("Ada wants to swim.", "What does Ada want?", "swim"),  # CRASH - TypeError
+        ("There are three men in the car.", "Who is in the car?", "men"),
+        ("It will rain tomorrow.", "When will it rain?", "tomorrow"),
+        ("It will snow soon.", "When will it snow?", "soon"),
+        ("The big red dog ran fast.", "What color is the dog?", "red"),
+        ("He gave her the book.", "Who did he give the book to?", "her"),
+        ("They told us a story.", "Who was told a story?", "us"),
+        (
+            "Water boils at 100 degrees.",
+            "At what temperature does water boil?",
+            "100 degrees",
+        ),
+        (
+            "The car travels at 60 miles per hour.",
+            "At what speed does the car travel?",
+            "60 miles per hour",
+        ),
+        ("The meeting starts at noon.", "At what time does the meeting start?", "noon"),
+        ("They meet at the park.", "At what place do they meet?", "park"),
+        (
+            "David and Lucy walk to school at 8:00AM.",
+            "At what time do they walk?",
+            "8:00AM",
+        ),
     ],
 )
 def test_solve(agent, sentence, question, expected):
